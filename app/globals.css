@@ -159,3 +159,10 @@
   }
 }
 
+.radial-gradient {
+  background: radial-gradient(white, transparent);
+}
+
+.custom-gradient {
+  background: linear-gradient(to right, #5a2411, #FA4C15 30%, #FA4C15 60%, #5a2411);
+}

@@ -1,240 +1,263 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AnimatedTitle from "@/components/animations/animatedTile";
-import TypewriterEffect from "@/components/animations/TypewriterEffect";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import AnimatedTitle from "@/components/animations/animatedTile";
+// import TypewriterEffect from "@/components/animations/TypewriterEffect";
+import Image from "next/image";
+import codeSpace from "@/app/assets/codeImage.svg"
+// import Capability1 from "@/app/assets/capabilities1.svg"
+// import Capability2 from "@/app/assets/capabilities2.svg"
 
-const features = [
-  {
-    icon: "🎯",
-    title: "Intent-Driven DeFi Autopilot",
-    description:
-      "Move beyond one-time transactions to condition-based, automated financial strategies that work across chains.",
-  },
-  {
-    icon: "📊",
-    title: "AI-Powered Opportunity Surfacing",
-    description:
-      "Our system continuously analyzes opportunities across all major blockchains, suggesting optimal strategies based on your goals.",
-  },
-  {
-    icon: "🔒",
-    title: "Privacy-Preserving Compliance",
-    description:
-      "Verify your identity once and maintain compliant access across all connected chains without repeatedly sharing personal data.",
-  },
-  {
-    icon: "⚡",
-    title: "Zero Gas Experience",
-    description:
-      "We eliminate the friction of gas fees through Circle Paymaster integration, allowing you to focus on your financial goals.",
-  },
-];
-
-const useCases = [
-  {
-    title: "The DeFi Enthusiast",
-    intent: "I want to earn the highest yield on my USDC across all chains",
-    description:
-      "IntentFI automatically moves funds to the highest-yielding opportunities, adjusting as market conditions change.",
-  },
-  {
-    title: "The Crypto Investor",
-    intent: "Convert 50% of my Bitcoin to a diversified DeFi portfolio",
-    description:
-      "IntentFI handles the cross-chain complexity, selecting optimal routes and protocols.",
-  },
-  {
-    title: "The Institutional Treasury",
-    intent:
-      "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
-    description:
-      "IntentFI automatically rebalances across chains as asset values fluctuate.",
-  },
-  {
-    title: "The Recurring Investor",
-    intent:
-      "Invest $200 in ETH every Friday, but only when the RSI is below 40",
-    description:
-      "IntentFI creates conditional automated investment strategies.",
-  },
-];
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Hero Section */}
-      <section className="px-4 py-20 md:py-32 bg-gradient-to-br from-gray-50 via-neutral-100 to-gray-100 dark:from-gray-950 dark:via-neutral-900 dark:to-gray-900">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
-            <div className="flex-1 space-y-6">
-              <div className="flex flex-row gap-2">
-              </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                <AnimatedTitle 
-                  text="Cross-Chain"
-                  className="block hover:cursor-pointer"
-                />
-                <AnimatedTitle 
-                  text="Intent "
-                  className="inline hover:cursor-pointer"
-                >
-                  <span className="inline-block min-w-[7ch]">
-                    <TypewriterEffect 
-                      text="Finance"
-                      className="bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent"
-                    />
-                  </span>
-                </AnimatedTitle>
+      <section className="px-4 py-10 md:py-5 bg-black text-white">
+        <div className="container mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            {/* Left column - Text content (increased width) */}
+            <div className="w-full md:w-7/12 lg:w-7/12">
+              <h1 className="text-7xl md:text-7xl font-light leading-tight">
+                Turn simple words 
+                <br />
+                into <span className="text-[#FA4C15] italic">powerful DeFi
+                <br />
+                strategies.</span>
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-xl">
-                Express financial goals in natural language. We&apos;ll execute
-                them across chains.
+              
+              <p className="text-xl text-gray-400 mt-8 mb-10 max-w-2xl">
+                IntentFi is the first AI-powered intent engine for DeFi that turns
+                natural language into automated, gasless, cross-chain strategies.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button
-                  asChild
-                  size="lg"
-                  className="bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 text-white"
-                >
-                  <Link href="/dashboard">Launch App</Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link href="/identity">Verify Identity</Link>
-                </Button>
+              
+              <div className="flex space-x-6">
+                <button className="bg-[#FA4C15] text-white px-10 py-4 rounded hover:bg-opacity-90 text-lg">
+                  Launch App
+                </button>
+                <button className="border border-white text-white px-10 py-4 rounded hover:bg-gray-900 text-lg">
+                  Verify Identity
+                </button>
               </div>
+              
+              <p className="text-gray-500 mt-10 text-lg">No gas. No code. No limits.</p>
             </div>
-            <div className="flex-1 flex justify-center md:justify-end">
-              <div className="relative w-full max-w-md h-[320px] md:h-[360px] bg-gradient-to-br from-purple-600/10 via-blue-500/10 to-cyan-400/10 dark:from-purple-600/20 dark:via-blue-500/20 dark:to-cyan-400/20 rounded-xl p-1">
-                <div className="w-full h-full bg-white/70 dark:bg-gray-900/70 backdrop-blur-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 relative">
-                  <div className="absolute top-5 left-5 text-xl">💬</div>
-                  <div className="absolute top-5 right-5 flex space-x-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  </div>
-                  <div className="flex flex-col h-full pt-12 px-5 pb-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg rounded-tl-none max-w-xs text-sm">
-                        I want to earn the highest yield on my USDC across all
-                        chains
-                      </div>
-                      <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg rounded-tr-none max-w-xs ml-auto text-sm">
-                        Finding the highest yields across 8 blockchains...
-                      </div>
-                      <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg rounded-tr-none max-w-xs ml-auto text-sm">
-                        Found! Polygon offers 7.2% APY on USDC via Aave. Moving
-                        1000 USDC from Ethereum to Polygon...
-                      </div>
-                      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg rounded-tl-none max-w-xs text-sm">
-                        Great! Notify me if better rates become available.
-                      </div>
-                      <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg rounded-tr-none max-w-xs ml-auto text-sm">
-                        Will do! I&apos;ll monitor rates across all chains and
-                        notify you of better opportunities.
-                      </div>
-                    </div>
-                    <div className="relative mt-4">
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-full bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Tell IntentFI what you want to achieve..."
-                        disabled
-                      />
-                      <Button
-                        size="sm"
-                        className="absolute right-1 top-1 rounded-full px-3 py-1 bg-blue-500 hover:bg-blue-600"
-                      >
-                        Send
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            
+            {/* Middle - Vertical divider */}
+            <div className="hidden md:block md:h-[678px] md:mx-4 lg:mx-6">
+              <div className="h-full w-0.5 radial-gradient opacity-20"></div>
+            </div>
+            
+            {/* Right column - Image (decreased width) */}
+            <div className="w-full md:w-4/12 lg:w-4/12 mt-12 md:mt-0">
+              <Image
+                src={codeSpace}
+                alt="Code Space"
+                className="w-full max-w-md mx-auto md:max-w-full"
+                priority
+              />
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 bg-white dark:bg-black">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Key Innovations
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-              Transforming how users interact with decentralized finance across
-              multiple blockchains.
+      <div className="bg-black text-white py-16 px-4">
+      <div className="container mx-auto flex flex-col md:flex-row items-start justify-between gap-4">
+        {/* Intent Section */}
+        <div className="flex flex-col flex-1">
+          <h2 className="text-3xl md:text-4xl font-serif text-orange-500 mb-6">Your intent</h2>
+          <div className="mb-6">
+            <p className="text-gray-400 text-lg mb-2">
+              &quot;Move $1,000 into low-risk DeFi that adapts weekly.&quot;
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {features.map((feature, index) => (
-              <Card
-                key={index}
-                className="overflow-hidden border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:shadow-lg dark:hover:shadow-purple-900/10 hover:-translate-y-1"
-              >
-                <CardHeader>
-                  <div className="text-4xl mb-2">{feature.icon}</div>
-                  <CardTitle>{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+          <div>
+            <p className="text-white text-lg">
+              No wallet hopping. No spreadsheets. No guesswork. Just one sentence.
+            </p>
           </div>
         </div>
-      </section>
+
+        {/* Plus Sign 1 */}
+        <div className="flex items-center justify-center md:mt-16 my-8 md:my-0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        {/* AI Engine Section */}
+        <div className="flex flex-col flex-1">
+          <h2 className="text-3xl md:text-4xl font-serif text-orange-500 mb-6">Our AI engine</h2>
+          <div className="mb-6">
+            <p className="text-gray-400 text-lg mb-2">
+              Executed via Circle CCTP, 1inch, and Zircuit — gas-free.
+            </p>
+          </div>
+          <div>
+            <p className="text-white text-lg">
+              No approvals. No gas anxiety. No breaking flows. It just works.
+            </p>
+          </div>
+        </div>
+
+        {/* Plus Sign 2 */}
+        <div className="flex items-center justify-center md:mt-16 my-8 md:my-0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        {/* Runs & Adapts Section */}
+        <div className="flex flex-col flex-1">
+          <h2 className="text-3xl md:text-4xl font-serif text-orange-500 mb-6">It runs, adapts &amp; grows</h2>
+          <div className="mb-6">
+            <p className="text-gray-400 text-lg mb-2">
+            &quot;One goal becomes a full plan that grows and adapts.&quot;
+            </p>
+          </div>
+          <div>
+            <p className="text-white text-lg">
+              You set the intent. We handle the rest — live, compliant, and optimized.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="border-b border-gray-800 mt-16"></div>
+    </div>
 
       {/* Use Cases Section */}
-      <section className="py-20 px-4 bg-gray-50 dark:bg-gray-950">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Use Cases That Showcase Our Value
+      <div className="bg-black text-white py-16 px-4">
+      <div className="container mx-auto">
+        {/* Heading Section */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-serif italic text-orange-500 mb-2">
+            Core Capabilities That
+          </h2>
+          <div className="flex justify-center items-center">
+            <h2 className="text-4xl md:text-5xl font-serif italic text-orange-500">
+              Set Us Apart
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-              Real-world examples of how IntentFI transforms the DeFi
-              experience.
+          </div>
+          <p className="text-gray-400 mt-8 max-w-3xl mx-auto text-center text-lg">
+            IntentFi goes beyond basic automation — enabling yielding, lending, 
+            borrowing, and real strategy execution through simple commands.
+          </p>
+        </div>
+
+        {/* Two Column Features */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16">
+          {/* Left Column - Intent-to-Action */}
+          <div className="rounded-2xl border border-gray-800 bg-gray-900/30 p-8">
+            <div className="min-h-64 mb-8">
+              {/* Example Command */}
+              <div className="bg-gray-950 rounded-xl p-4 mb-8 w-fit mx-auto md:mx-0 md:ml-auto">
+                <p className="text-white">
+                  &quote;Rebalance my portfolio to 60% stablecoins.&quote;
+                </p>
+              </div>
+
+              {/* Processing Steps */}
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z" fill="#F05E23" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400">Understanding...</p>
+                </div>
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z" fill="#F05E23" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400">Scanning yield protocols...</p>
+                </div>
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z" fill="#F05E23" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-400">Generating strategy...</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Intent Title */}
+            <h3 className="text-2xl md:text-3xl font-serif text-orange-500 mb-4">
+              Intent-to-Action AI Engine
+            </h3>
+            
+            <p className="text-gray-400 mb-4">
+              Just say what you want to do — and IntentFi turns it into a live, 
+              cross-chain strategy.
+            </p>
+            
+            <p className="text-white">
+              No need for coding, forms, or step-by-step setups. Your words 
+              are enough.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {useCases.map((useCase, index) => (
-              <Card
-                key={index}
-                className="overflow-hidden border border-gray-200 dark:border-gray-800 transition-all duration-300 hover:shadow-lg dark:hover:shadow-purple-900/10"
-              >
-                <CardHeader>
-                  <CardTitle>{useCase.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg rounded-tl-none text-sm">
-                    &quot;{useCase.intent}&quot;
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    {useCase.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {/* Right Column - Built-in Yielding */}
+          <div className="rounded-2xl border border-gray-800 bg-gray-900/30 p-8">
+            <div className="min-h-64 mb-8">
+              {/* Example Command */}
+              <div className="bg-gray-950 rounded-xl p-4 mb-6 w-fit mx-auto md:mx-0 md:ml-auto">
+                <p className="text-white">
+                  &quote;Grow my $1,000 in DeFi.&quote;
+                </p>
+              </div>
 
-          <div className="mt-16 text-center">
-            <Button
-              asChild
-              size="lg"
-              className="bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 text-white"
-            >
-              <Link href="/intent">Try Intent Interface</Link>
-            </Button>
+              {/* Strategy Results */}
+              <div className="space-y-6">
+                <div className="flex items-start mb-2">
+                  <div className="mr-3 mt-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z" fill="#F05E23" />
+                    </svg>
+                  </div>
+                  <div className="bg-gray-900 p-4 rounded-lg w-full">
+                    <p className="font-medium text-white">Yield Farming</p>
+                    <p className="text-gray-400">→ 7.2% APY via Beefy on Polygon</p>
+                    <p className="text-gray-400">→ Auto-compounding enabled</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z" fill="#F05E23" />
+                    </svg>
+                  </div>
+                  <div className="bg-gray-900 p-4 rounded-lg w-full">
+                    <p className="font-medium text-white">Lending</p>
+                    <p className="text-gray-400">→ Lending USDC via Aave v3</p>
+                    <p className="text-gray-400">→ Weekly interest snapshot</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Intent Title */}
+            <h3 className="text-2xl md:text-3xl font-serif text-orange-500 mb-4">
+              Built-in Yielding, Lending & Borrowing
+            </h3>
+            
+            <p className="text-gray-400 mb-4">
+              Go beyond simple swaps — build real financial strategies with
+              intent.
+            </p>
+            
+            <p className="text-white">
+              You can lend, borrow, and farm yields across protocols using a
+              single command.
+            </p>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
 
       {/* Tech Stack Section */}
       <section className="py-20 px-4 bg-white dark:bg-black">
