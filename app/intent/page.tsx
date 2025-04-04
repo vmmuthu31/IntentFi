@@ -54,7 +54,7 @@ export default function IntentPage() {
     null
   );
 
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
 
   const handleProcessIntent = async () => {
     if (!intent) {
@@ -64,6 +64,104 @@ export default function IntentPage() {
 
     setIsProcessing(true);
     try {
+      const lowerIntent = intent.toLowerCase().trim();
+
+      if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
+        setIntentResult({
+          steps: [
+            {
+              description:
+                "Hello! I'm your financial assistant. How can I help with your investments today?",
+              chain: "N/A",
+            },
+          ],
+        });
+        toast.success("Greeting acknowledged");
+        setIsProcessing(false);
+        return;
+      }
+
+      const financialKeywords = [
+        "invest",
+        "yield",
+        "earn",
+        "stake",
+        "swap",
+        "trade",
+        "buy",
+        "sell",
+        "token",
+        "coin",
+        "crypto",
+        "nft",
+        "defi",
+        "eth",
+        "btc",
+        "bitcoin",
+        "ethereum",
+        "usdc",
+        "usdt",
+        "dai",
+        "portfolio",
+        "asset",
+        "balance",
+        "wallet",
+        "chain",
+        "blockchain",
+        "bridge",
+        "transfer",
+        "liquidity",
+        "pool",
+        "apy",
+        "interest",
+        "loan",
+        "borrow",
+        "lend",
+        "collateral",
+        "leverage",
+        "position",
+        "protocol",
+        "smart contract",
+        "rebalance",
+        "diversify",
+        "risk",
+        "profit",
+        "loss",
+        "dollar",
+        "$",
+        "percentage",
+        "%",
+        "price",
+        "value",
+      ];
+
+      const isQuestionPattern =
+        /^(who|what|when|where|why|how|is|are|can|could|do|does|which|whose)\s/i.test(
+          lowerIntent
+        );
+
+      const containsFinancialKeyword = financialKeywords.some((keyword) =>
+        lowerIntent.includes(keyword)
+      );
+
+      if (
+        (isQuestionPattern && !containsFinancialKeyword) ||
+        (!containsFinancialKeyword && lowerIntent.length < 15)
+      ) {
+        setIntentResult({
+          steps: [
+            {
+              description:
+                "I'm specialized in financial intents and DeFi operations. Please provide a finance-related request like 'Earn yield on USDC' or 'Invest in ETH weekly'.",
+              chain: "N/A",
+            },
+          ],
+        });
+        toast.info("Please provide a financial intent");
+        setIsProcessing(false);
+        return;
+      }
+
       const response = await fetch("/api/intent/process", {
         method: "POST",
         headers: {
@@ -96,61 +194,12 @@ export default function IntentPage() {
     }
   };
 
-  const confirmIntent = async () => {
-    if (!intentResult) return;
+  const handleExampleClick = (exampleText: string) => {
+    setIntent(exampleText);
 
-    if (!isConnected || !address) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      const walletAddress = address;
-
-      interface IntentSubmitResponse {
-        intentId: string;
-        [key: string]: unknown;
-      }
-
-      toast.loading("Submitting intent to the blockchain...");
-
-      const response = await fetch("/api/intent/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          walletAddress,
-          intentPlan: intentResult,
-          originalIntent: intent,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to submit intent");
-      }
-
-      const result = data.data as IntentSubmitResponse;
-
-      toast.dismiss();
-      toast.success("Intent submitted successfully!");
-
-      console.log("Submitted intent with ID:", result.intentId);
-
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1500);
-    } catch (error) {
-      toast.dismiss();
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to submit intent. Please try again."
-      );
-      console.error("Error submitting intent:", error);
-    }
+    setTimeout(() => {
+      handleProcessIntent();
+    }, 100);
   };
 
   return (
@@ -209,7 +258,7 @@ export default function IntentPage() {
                               <Button
                                 variant="outline"
                                 className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
-                                onClick={() => setIntent(example)}
+                                onClick={() => handleExampleClick(example)}
                               >
                                 {example}
                               </Button>
@@ -240,20 +289,6 @@ export default function IntentPage() {
                             ))}
                           </ol>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Estimated Cost:
-                            </span>{" "}
-                            {intentResult.estimatedCost}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Estimated Time:
-                            </span>{" "}
-                            {intentResult.estimatedTime}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -263,18 +298,17 @@ export default function IntentPage() {
                 <Button variant="outline" onClick={() => setIntent("")}>
                   Clear
                 </Button>
-                {!intentResult ? (
+                {/* if no wallet connected then dontallow to process intent   */}
+                {!isConnected ? (
+                  <Button variant="outline" disabled>
+                    Connect Wallet to Process Intent
+                  </Button>
+                ) : (
                   <Button
                     onClick={handleProcessIntent}
                     disabled={isProcessing || !intent}
                   >
                     {isProcessing ? "Processing..." : "Process Intent"}
-                  </Button>
-                ) : (
-                  <Button onClick={confirmIntent} disabled={!isConnected}>
-                    {!isConnected
-                      ? "Connect Wallet to Execute"
-                      : "Confirm & Execute"}
                   </Button>
                 )}
               </CardFooter>

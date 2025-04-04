@@ -156,8 +156,6 @@ function encodeIntentData(
   const data = {
     intentText,
     steps: intentPlan.steps,
-    estimatedCost: intentPlan.estimatedCost,
-    estimatedTime: intentPlan.estimatedTime,
   };
 
   return JSON.stringify(data);

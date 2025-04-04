@@ -14,8 +14,6 @@ export interface IntentStep {
 
 export interface IntentExecutionPlan {
   steps: IntentStep[];
-  estimatedCost: string;
-  estimatedTime: string;
 }
 
 /**
@@ -64,8 +62,6 @@ The JSON should have this format:
   "steps": [
     {"description": "Step description", "chain": "Chain name or 'Multiple' or 'N/A'"}
   ],
-  "estimatedCost": "Cost as a string with $ sign",
-  "estimatedTime": "Estimated time as string"
 }
 
 Make your responses practical and realistic. For execution steps, consider:
@@ -100,12 +96,7 @@ Return ONLY the JSON with no other text.`,
 
     const parsedJson = JSON.parse(jsonMatch[0]);
 
-    if (
-      !parsedJson.steps ||
-      !Array.isArray(parsedJson.steps) ||
-      !parsedJson.estimatedCost ||
-      !parsedJson.estimatedTime
-    ) {
+    if (!parsedJson.steps || !Array.isArray(parsedJson.steps)) {
       throw new Error("Claude response is missing required fields");
     }
 
@@ -138,9 +129,7 @@ async function processWithOpenAI(intent: string): Promise<IntentExecutionPlan> {
 {
   "steps": [
     {"description": "Step description", "chain": "Chain name or 'Multiple' or 'N/A'"}
-  ],
-  "estimatedCost": "Cost as a string with $ sign",
-  "estimatedTime": "Estimated time as string"
+  ]
 }
 
 Make your responses practical and realistic. For execution steps, consider:
@@ -223,8 +212,6 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
         },
         { description: "Set up monitoring for better rates", chain: "N/A" },
       ],
-      estimatedCost: "$2.50",
-      estimatedTime: "~3 minutes",
     };
   } else if (
     lowerIntent.includes("diversif") ||
@@ -255,8 +242,6 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
           chain: "Ethereum → Celo",
         },
       ],
-      estimatedCost: "$15.75",
-      estimatedTime: "~15 minutes",
     };
   } else if (
     lowerIntent.includes("every") ||
@@ -288,8 +273,6 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
           chain: "N/A",
         },
       ],
-      estimatedCost: "$8.25 (one-time) + $1.50 per execution",
-      estimatedTime: "~5 minutes setup, then automated",
     };
   } else if (
     lowerIntent.includes("gas") ||
@@ -324,8 +307,6 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
           chain: "Polygon",
         },
       ],
-      estimatedCost: "$12.30 (one-time, recovered in ~21 days)",
-      estimatedTime: "~10 minutes",
     };
   } else {
     return {
@@ -339,8 +320,6 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
         { description: "Execute primary transactions", chain: "Multiple" },
         { description: "Monitor and confirm completion", chain: "N/A" },
       ],
-      estimatedCost: "$5-10 (estimated)",
-      estimatedTime: "~5-10 minutes",
     };
   }
 }
