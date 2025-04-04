@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/ui/logo";
+import WalletConnect from "../ui/WalletConnect";
+import { ThemeToggle } from "../theme-toggle";
 
 const navItems = [
   {
@@ -67,6 +69,10 @@ export function MobileNav() {
               )}
             </Link>
           ))}
+          <div className="flex pl-3 items-center gap-4">
+            <WalletConnect />
+            <ThemeToggle />
+          </div>
         </nav>
       </SheetContent>
     </Sheet>

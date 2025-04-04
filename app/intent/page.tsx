@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import * as React from "react";
-
+import { IntentHistory } from "@/components/intent/intent-history";
 // Standalone form components that don't rely on FormContext
 const StandaloneFormLabel = ({
   htmlFor,
@@ -212,6 +212,148 @@ export default function IntentPage() {
                 )}
               </CardFooter>
             </Card>
+
+            {/* Example Intents Section */}
+            <div className="mt-8 border rounded-lg p-6 bg-muted/30">
+              <h3 className="text-lg font-medium mb-3">
+                Example Intents to Try
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Click any example to use it as your intent. Our AI can
+                understand various financial goals:
+              </p>
+
+              <div className="grid gap-6 mb-6">
+                <div>
+                  <h4 className="text-sm font-medium text-primary mb-2">
+                    🔍 Yield Optimization
+                  </h4>
+                  <div
+                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setIntent(
+                        "I want to earn the highest yield on my USDC across all chains"
+                      );
+                      document
+                        .getElementById("intent")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    <p className="text-sm">
+                      I want to earn the highest yield on my USDC across all
+                      chains
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-primary mb-2">
+                    🔄 Portfolio Rebalancing
+                  </h4>
+                  <div className="grid gap-3">
+                    <div
+                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setIntent(
+                          "Convert 50% of my Bitcoin to a diversified DeFi portfolio"
+                        );
+                        document
+                          .getElementById("intent")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      <p className="text-sm">
+                        Convert 50% of my Bitcoin to a diversified DeFi
+                        portfolio
+                      </p>
+                    </div>
+                    <div
+                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setIntent(
+                          "Maintain a balanced portfolio that&apos;s 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions"
+                        );
+                        document
+                          .getElementById("intent")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      <p className="text-sm">
+                        Maintain a balanced portfolio that&apos;s 40%
+                        stablecoins, 30% blue-chip crypto, and 30%
+                        yield-generating positions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-primary mb-2">
+                    ⏱️ Automated Trading
+                  </h4>
+                  <div className="grid gap-3">
+                    <div
+                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setIntent(
+                          "Invest $200 in ETH every Friday, but only when the RSI is below 40"
+                        );
+                        document
+                          .getElementById("intent")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      <p className="text-sm">
+                        Invest $200 in ETH every Friday, but only when the RSI
+                        is below 40
+                      </p>
+                    </div>
+                    <div
+                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                      onClick={() => {
+                        setIntent(
+                          "Automatically sell 10% of my ETH when it reaches $5,000"
+                        );
+                        document
+                          .getElementById("intent")
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      <p className="text-sm">
+                        Automatically sell 10% of my ETH when it reaches $5,000
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-primary mb-2">
+                    🌉 Cross-Chain Operations
+                  </h4>
+                  <div
+                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setIntent(
+                        "Move all my assets from Ethereum to Polygon to reduce gas fees"
+                      );
+                      document
+                        .getElementById("intent")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    <p className="text-sm">
+                      Move all my assets from Ethereum to Polygon to reduce gas
+                      fees
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground italic">
+                IntentFi can handle complex combinations of these operations,
+                with conditions, timing requirements, and multi-step workflows.
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="template">
@@ -306,6 +448,9 @@ export default function IntentPage() {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
+      <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
+        <IntentHistory />
       </div>
     </main>
   );

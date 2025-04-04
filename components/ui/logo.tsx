@@ -16,7 +16,7 @@ export function Logo({ className, onClick }: LogoProps) {
           className
         )}
       >
-        <span className="mr-1">CCIF</span>
+        <span className="mr-1">IntentFI</span>
         <span className="text-sm font-normal opacity-80">
           Cross-Chain Intent Finance
         </span>

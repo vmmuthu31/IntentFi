@@ -34,26 +34,27 @@ const useCases = [
     title: "The DeFi Enthusiast",
     intent: "I want to earn the highest yield on my USDC across all chains",
     description:
-      "CCIF automatically moves funds to the highest-yielding opportunities, adjusting as market conditions change.",
+      "IntentFI automatically moves funds to the highest-yielding opportunities, adjusting as market conditions change.",
   },
   {
     title: "The Crypto Investor",
     intent: "Convert 50% of my Bitcoin to a diversified DeFi portfolio",
     description:
-      "CCIF handles the cross-chain complexity, selecting optimal routes and protocols.",
+      "IntentFI handles the cross-chain complexity, selecting optimal routes and protocols.",
   },
   {
     title: "The Institutional Treasury",
     intent:
       "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
     description:
-      "CCIF automatically rebalances across chains as asset values fluctuate.",
+      "IntentFI automatically rebalances across chains as asset values fluctuate.",
   },
   {
     title: "The Recurring Investor",
     intent:
       "Invest $200 in ETH every Friday, but only when the RSI is below 40",
-    description: "CCIF creates conditional automated investment strategies.",
+    description:
+      "IntentFI creates conditional automated investment strategies.",
   },
 ];
 
@@ -122,7 +123,7 @@ export default function Home() {
                       <input
                         type="text"
                         className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-full bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Tell CCIF what you want to achieve..."
+                        placeholder="Tell IntentFI what you want to achieve..."
                         disabled
                       />
                       <Button
@@ -182,7 +183,8 @@ export default function Home() {
               Use Cases That Showcase Our Value
             </h2>
             <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-              Real-world examples of how CCIF transforms the DeFi experience.
+              Real-world examples of how IntentFI transforms the DeFi
+              experience.
             </p>
           </div>
 
@@ -276,7 +278,7 @@ export default function Home() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <div className="text-xl font-bold text-white">CCIF</div>
+              <div className="text-xl font-bold text-white">IntentFI</div>
               <div className="text-sm">Cross-Chain Intent Finance</div>
             </div>
             <div className="flex space-x-6">
@@ -295,7 +297,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8 pt-4 border-t border-gray-800 text-center text-sm">
-            © 2025 CCIF. All rights reserved.
+            © 2025 IntentFI. All rights reserved.
           </div>
         </div>
       </footer>
