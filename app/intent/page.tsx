@@ -41,6 +41,27 @@ const StandaloneFormDescription = ({
   </p>
 );
 
+const intentExamples = [
+  "I want to earn the highest yield on my USDC across all chains",
+  "Convert 50% of my Bitcoin to a diversified DeFi portfolio",
+  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
+  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
+  "Move all my assets from Ethereum to Polygon to reduce gas fees",
+  "Automatically sell 10% of my ETH when it reaches $5,000",
+];
+
+const getRandomExamples = (examples: string[], count: number) => {
+  // Shuffle the array
+  const shuffled = [...examples].sort(() => 0.5 - Math.random());
+  // Return the first 'count' elements
+  return shuffled.slice(0, count);
+};
+
+const randomExamples = getRandomExamples(intentExamples, 4);
+
+
+
+
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -190,6 +211,24 @@ export default function IntentPage() {
                       You can specify chains, tokens, percentages, and
                       conditions.
                     </StandaloneFormDescription>
+                    <div>
+                      <h3 className="text-sm font-medium">
+                        Example intents to try:
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      {randomExamples.map((example, index) => (
+                        <div key={index} className="w-full flex justify-center">
+                          <Button
+                            variant="outline"
+                            className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
+                            onClick={() => setIntent(example)}
+                          >
+                            {example}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {intentResult && (
@@ -254,7 +293,7 @@ export default function IntentPage() {
             </Card>
 
             {/* Example Intents Section */}
-            <div className="mt-8 border rounded-lg p-6 bg-muted/30">
+            {/* <div className="mt-8 border rounded-lg p-6 bg-muted/30">
               <h3 className="text-lg font-medium mb-3">
                 Example Intents to Try
               </h3>
@@ -393,7 +432,7 @@ export default function IntentPage() {
                 IntentFi can handle complex combinations of these operations,
                 with conditions, timing requirements, and multi-step workflows.
               </p>
-            </div>
+            </div> */}
           </TabsContent>
 
           <TabsContent value="template">
