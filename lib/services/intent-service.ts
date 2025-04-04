@@ -28,7 +28,6 @@ export async function processIntent(
   intent: string
 ): Promise<IntentExecutionPlan> {
   try {
-    // Try Claude first
     const claudeResult = await processWithClaude(intent);
     return claudeResult;
   } catch (error) {
@@ -36,7 +35,6 @@ export async function processIntent(
       "Claude intent processing failed, falling back to OpenAI:",
       error
     );
-    // Fallback to OpenAI
     return processWithOpenAI(intent);
   }
 }
@@ -93,10 +91,8 @@ Return ONLY the JSON with no other text.`,
 
     const data = await response.json();
 
-    // Extract the JSON from Claude's response
     const responseContent = data.content[0].text;
 
-    // Try to find a JSON object in the response
     const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("Could not extract JSON from Claude response");
@@ -104,7 +100,6 @@ Return ONLY the JSON with no other text.`,
 
     const parsedJson = JSON.parse(jsonMatch[0]);
 
-    // Validate the response format
     if (
       !parsedJson.steps ||
       !Array.isArray(parsedJson.steps) ||
@@ -174,10 +169,8 @@ Make your responses practical and realistic. For execution steps, consider:
     const data = await response.json();
 
     try {
-      // OpenAI's response should already be in JSON format due to response_format
       const parsedJson = JSON.parse(data.choices[0].message.content);
 
-      // Validate the response
       if (
         !parsedJson.steps ||
         !Array.isArray(parsedJson.steps) ||
@@ -194,7 +187,6 @@ Make your responses practical and realistic. For execution steps, consider:
     }
   } catch (error) {
     console.error("Error processing with OpenAI:", error);
-    // If OpenAI fails too, fall back to simulated data
     return simulateIntentProcessing(intent);
   }
 }
@@ -206,7 +198,6 @@ Make your responses practical and realistic. For execution steps, consider:
 function simulateIntentProcessing(intent: string): IntentExecutionPlan {
   const lowerIntent = intent.toLowerCase();
 
-  // Yield optimization intent
   if (
     lowerIntent.includes("yield") ||
     lowerIntent.includes("earn") ||
@@ -235,10 +226,7 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
       estimatedCost: "$2.50",
       estimatedTime: "~3 minutes",
     };
-  }
-
-  // Portfolio diversification intent
-  else if (
+  } else if (
     lowerIntent.includes("diversif") ||
     lowerIntent.includes("portfolio") ||
     lowerIntent.includes("convert") ||
@@ -270,10 +258,7 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
       estimatedCost: "$15.75",
       estimatedTime: "~15 minutes",
     };
-  }
-
-  // DCA or recurring/conditional intent
-  else if (
+  } else if (
     lowerIntent.includes("every") ||
     lowerIntent.includes("weekly") ||
     lowerIntent.includes("when") ||
@@ -306,10 +291,7 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
       estimatedCost: "$8.25 (one-time) + $1.50 per execution",
       estimatedTime: "~5 minutes setup, then automated",
     };
-  }
-
-  // Gas optimization or moving assets between chains
-  else if (
+  } else if (
     lowerIntent.includes("gas") ||
     lowerIntent.includes("move") ||
     lowerIntent.includes("transfer") ||
@@ -345,10 +327,7 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
       estimatedCost: "$12.30 (one-time, recovered in ~21 days)",
       estimatedTime: "~10 minutes",
     };
-  }
-
-  // Default response for other intents
-  else {
+  } else {
     return {
       steps: [
         { description: "Analyze intent requirements", chain: "N/A" },

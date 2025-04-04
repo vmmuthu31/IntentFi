@@ -2,14 +2,11 @@ import { NextResponse } from "next/server";
 import { submitIntent } from "@/lib/services/blockchain-service";
 import { IntentExecutionPlan } from "@/lib/services/intent-service";
 
-// POST /api/intent/submit
 export async function POST(request: Request) {
   try {
-    // Get data from request body
     const body = await request.json();
     const { walletAddress, intentPlan, originalIntent } = body;
 
-    // Validate the request
     if (!walletAddress || typeof walletAddress !== "string") {
       return NextResponse.json(
         {
@@ -37,17 +34,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Submit the intent to the blockchain
-    console.log(
-      `Submitting intent from wallet ${walletAddress}: "${originalIntent}"`
-    );
     const intentId = await submitIntent(
       walletAddress,
       intentPlan as IntentExecutionPlan,
       originalIntent
     );
 
-    // Return the intent ID
     return NextResponse.json({
       success: true,
       data: {
@@ -63,7 +55,6 @@ export async function POST(request: Request) {
       {
         success: false,
         error: err.message || "Failed to submit intent to blockchain",
-        // Include more details in development
         ...(process.env.NODE_ENV === "development" && {
           stack: err.stack,
           details:

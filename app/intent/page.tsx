@@ -19,7 +19,6 @@ import * as React from "react";
 import { IntentHistory } from "@/components/intent/intent-history";
 import { IntentExecutionPlan } from "@/lib/services/intent-service";
 
-// Standalone form components that don't rely on FormContext
 const StandaloneFormLabel = ({
   htmlFor,
   children,
@@ -41,23 +40,12 @@ const StandaloneFormDescription = ({
   </p>
 );
 
-const intentExamples = [
-  "I want to earn the highest yield on my USDC across all chains",
-  "Convert 50% of my Bitcoin to a diversified DeFi portfolio",
-  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
-  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
-  "Move all my assets from Ethereum to Polygon to reduce gas fees",
+const exampleSubset = [
   "Automatically sell 10% of my ETH when it reaches $5,000",
+  "Move all my assets from Ethereum to Polygon to reduce gas fees",
+  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
+  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
 ];
-
-const getRandomExamples = (examples: string[], count: number) => {
-  // Shuffle the array
-  const shuffled = [...examples].sort(() => 0.5 - Math.random());
-  // Return the first 'count' elements
-  return shuffled.slice(0, count);
-};
-
-const randomExamples = getRandomExamples(intentExamples, 4);
 
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
@@ -66,7 +54,6 @@ export default function IntentPage() {
     null
   );
 
-  // Get account from wagmi instead of our custom hook
   const { address, isConnected } = useAccount();
 
   const handleProcessIntent = async () => {
@@ -77,7 +64,6 @@ export default function IntentPage() {
 
     setIsProcessing(true);
     try {
-      // Call the dedicated API endpoint for processing
       const response = await fetch("/api/intent/process", {
         method: "POST",
         headers: {
@@ -113,26 +99,21 @@ export default function IntentPage() {
   const confirmIntent = async () => {
     if (!intentResult) return;
 
-    // Check if wallet is connected
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       return;
     }
 
     try {
-      // Use the actual connected wallet address from wagmi
       const walletAddress = address;
 
-      // Define the response type
       interface IntentSubmitResponse {
         intentId: string;
         [key: string]: unknown;
       }
 
-      // Show loading toast
       toast.loading("Submitting intent to the blockchain...");
 
-      // Execute fetch separately
       const response = await fetch("/api/intent/submit", {
         method: "POST",
         headers: {
@@ -151,22 +132,17 @@ export default function IntentPage() {
         throw new Error(data.error || "Failed to submit intent");
       }
 
-      // Cast the response data
       const result = data.data as IntentSubmitResponse;
 
-      // Dismiss loading toast and show success
       toast.dismiss();
       toast.success("Intent submitted successfully!");
 
-      // Log the intent ID for tracking
       console.log("Submitted intent with ID:", result.intentId);
 
-      // Redirect to dashboard after a short delay
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 1500);
     } catch (error) {
-      // Dismiss loading toast and show error
       toast.dismiss();
       toast.error(
         error instanceof Error
@@ -225,8 +201,11 @@ export default function IntentPage() {
                           </h3>
                         </div>
                         <div className="grid grid-cols-2 gap-4 mt-2">
-                          {randomExamples.map((example, index) => (
-                            <div key={index} className="w-full flex justify-center">
+                          {exampleSubset.map((example, index) => (
+                            <div
+                              key={index}
+                              className="w-full flex justify-center"
+                            >
                               <Button
                                 variant="outline"
                                 className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
@@ -300,148 +279,6 @@ export default function IntentPage() {
                 )}
               </CardFooter>
             </Card>
-
-            {/* Example Intents Section */}
-            {/* <div className="mt-8 border rounded-lg p-6 bg-muted/30">
-              <h3 className="text-lg font-medium mb-3">
-                Example Intents to Try
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Click any example to use it as your intent. Our AI can
-                understand various financial goals:
-              </p>
-
-              <div className="grid gap-6 mb-6">
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🔍 Yield Optimization
-                  </h4>
-                  <div
-                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      setIntent(
-                        "I want to earn the highest yield on my USDC across all chains"
-                      );
-                      document
-                        .getElementById("intent")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    <p className="text-sm">
-                      I want to earn the highest yield on my USDC across all
-                      chains
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🔄 Portfolio Rebalancing
-                  </h4>
-                  <div className="grid gap-3">
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Convert 50% of my Bitcoin to a diversified DeFi portfolio"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Convert 50% of my Bitcoin to a diversified DeFi
-                        portfolio
-                      </p>
-                    </div>
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Maintain a balanced portfolio that&apos;s 40%
-                        stablecoins, 30% blue-chip crypto, and 30%
-                        yield-generating positions
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    ⏱️ Automated Trading
-                  </h4>
-                  <div className="grid gap-3">
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Invest $200 in ETH every Friday, but only when the RSI is below 40"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Invest $200 in ETH every Friday, but only when the RSI
-                        is below 40
-                      </p>
-                    </div>
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Automatically sell 10% of my ETH when it reaches $5,000"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Automatically sell 10% of my ETH when it reaches $5,000
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🌉 Cross-Chain Operations
-                  </h4>
-                  <div
-                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      setIntent(
-                        "Move all my assets from Ethereum to Polygon to reduce gas fees"
-                      );
-                      document
-                        .getElementById("intent")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    <p className="text-sm">
-                      Move all my assets from Ethereum to Polygon to reduce gas
-                      fees
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground italic">
-                IntentFi can handle complex combinations of these operations,
-                with conditions, timing requirements, and multi-step workflows.
-              </p>
-            </div> */}
           </TabsContent>
 
           <TabsContent value="template">

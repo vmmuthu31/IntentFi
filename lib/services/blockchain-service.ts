@@ -8,7 +8,6 @@
 
 import { IntentExecutionPlan } from "./intent-service";
 
-// Enum for different intent types
 export enum IntentType {
   YieldOptimization = "yieldOptimization",
   PortfolioDiversification = "portfolioDiversification",
@@ -16,7 +15,6 @@ export enum IntentType {
   CrossChainTransfer = "crossChainTransfer",
 }
 
-// Intent status from the smart contract
 export enum IntentStatus {
   None = 0,
   Created = 1,
@@ -25,7 +23,6 @@ export enum IntentStatus {
   Failed = 4,
 }
 
-// Interface for smart contract intent
 export interface BlockchainIntent {
   id: string;
   creator: string;
@@ -49,14 +46,8 @@ export async function submitIntent(
   intentText: string
 ): Promise<string> {
   try {
-    // Determine intent type from the steps
     const intentType = determineIntentType(intentPlan);
-
-    // Encode intent data (in a real app, this would use ABI encoding)
     const encodedData = encodeIntentData(intentType, intentPlan, intentText);
-
-    // Mock contract call to create intent
-    // In a real implementation, this would use viem or ethers.js to call the smart contract
     const intentId = await mockCreateIntent(
       walletAddress,
       intentType,
@@ -78,8 +69,6 @@ export async function submitIntent(
  */
 export async function executeIntent(intentId: string): Promise<boolean> {
   try {
-    // Mock contract call to execute intent
-    // In a real implementation, this would call the executeIntent function on the smart contract
     const success = await mockExecuteIntent(intentId);
 
     return success;
@@ -99,8 +88,6 @@ export async function getIntentDetails(
   intentId: string
 ): Promise<BlockchainIntent> {
   try {
-    // Mock contract call to get intent details
-    // In a real implementation, this would call the getIntent function on the smart contract
     const intent = await mockGetIntent(intentId);
 
     return intent;
@@ -119,7 +106,6 @@ function determineIntentType(intentPlan: IntentExecutionPlan): IntentType {
   );
   const stepChains = intentPlan.steps.map((step) => step.chain.toLowerCase());
 
-  // Check for yield optimization
   if (
     stepDescriptions.some(
       (desc) =>
@@ -131,8 +117,6 @@ function determineIntentType(intentPlan: IntentExecutionPlan): IntentType {
   ) {
     return IntentType.YieldOptimization;
   }
-
-  // Check for portfolio diversification
   if (
     stepDescriptions.some(
       (desc) => desc.includes("diversif") || desc.includes("portfolio")
@@ -146,7 +130,6 @@ function determineIntentType(intentPlan: IntentExecutionPlan): IntentType {
     return IntentType.PortfolioDiversification;
   }
 
-  // Check for scheduled investment
   if (
     stepDescriptions.some(
       (desc) =>
@@ -159,7 +142,6 @@ function determineIntentType(intentPlan: IntentExecutionPlan): IntentType {
     return IntentType.ScheduledInvestment;
   }
 
-  // Default to cross-chain transfer
   return IntentType.CrossChainTransfer;
 }
 
@@ -171,8 +153,6 @@ function encodeIntentData(
   intentPlan: IntentExecutionPlan,
   intentText: string
 ): string {
-  // In a real implementation, this would ABI encode the data based on the intent type
-  // For simplicity, we'll just stringify the data
   const data = {
     intentText,
     steps: intentPlan.steps,
@@ -189,12 +169,11 @@ function encodeIntentData(
 async function mockCreateIntent(
   walletAddress: string,
   intentType: IntentType,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   encodedData: string
 ): Promise<string> {
-  // Simulate blockchain delay
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  // Generate a random intent ID (in a real implementation, this would come from the transaction receipt)
   const intentId =
     "0x" +
     Array.from({ length: 64 }, () =>
@@ -212,10 +191,8 @@ async function mockCreateIntent(
  * Mock function to simulate executing an intent on the blockchain
  */
 async function mockExecuteIntent(intentId: string): Promise<boolean> {
-  // Simulate blockchain delay
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  // Simulate a 95% success rate
   const success = Math.random() < 0.95;
 
   console.log(
@@ -231,10 +208,8 @@ async function mockExecuteIntent(intentId: string): Promise<boolean> {
  * Mock function to simulate getting intent details from the blockchain
  */
 async function mockGetIntent(intentId: string): Promise<BlockchainIntent> {
-  // Simulate blockchain delay
   await new Promise((resolve) => setTimeout(resolve, 300));
 
-  // Generate a mock intent (in a real implementation, this would come from the contract)
   const intent: BlockchainIntent = {
     id: intentId,
     creator:
@@ -244,8 +219,8 @@ async function mockGetIntent(intentId: string): Promise<BlockchainIntent> {
       ).join(""),
     intentType: Object.values(IntentType)[Math.floor(Math.random() * 4)],
     status: IntentStatus.Completed,
-    createdAt: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
-    executedAt: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
+    createdAt: Math.floor(Date.now() / 1000) - 3600,
+    executedAt: Math.floor(Date.now() / 1000) - 1800,
   };
 
   return intent;

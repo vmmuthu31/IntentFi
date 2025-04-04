@@ -21,7 +21,6 @@ interface ApiConfig {
   };
 }
 
-// Configuration for API services
 export const apiConfig: ApiConfig = {
   claude: {
     apiKey: process.env.NEXT_PUBLIC_CLAUDE_API_KEY || "",

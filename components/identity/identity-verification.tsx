@@ -27,7 +27,6 @@ export function IdentityVerification() {
 
   const startVerification = () => {
     setVerificationStep("connecting");
-    // Simulate connection process
     setTimeout(() => {
       setVerificationStep("uploading");
       setTimeout(() => {

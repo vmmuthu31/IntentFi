@@ -32,13 +32,10 @@ export function IntentInput() {
 
     if (!intent.trim()) return;
 
-    // Add user message to conversation
     setConversation([...conversation, { role: "user", content: intent }]);
 
-    // Simulate processing
     setLoading(true);
     setTimeout(() => {
-      // Simulate AI response
       let response = "";
 
       if (

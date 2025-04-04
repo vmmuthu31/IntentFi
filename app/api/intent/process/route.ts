@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { processIntent } from "@/lib/services/intent-service";
 
-// POST /api/intent/process
 export async function POST(request: Request) {
   try {
-    // Get intent from request body
     const body = await request.json();
     const { intent } = body;
 
@@ -15,26 +13,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Process the intent using our AI service
-    console.log(`Processing intent: "${intent}"`);
     const result = await processIntent(intent);
 
-    // Return the processed intent
     return NextResponse.json({
       success: true,
       data: result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error processing intent:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to process intent",
-        // Include more details in development
+        error:
+          error instanceof Error ? error.message : "Failed to process intent",
         ...(process.env.NODE_ENV === "development" && {
-          stack: error.stack,
-          details: error.details,
+          stack: error instanceof Error ? error.stack : undefined,
         }),
       },
       { status: 500 }
