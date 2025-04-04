@@ -55,17 +55,21 @@ export async function POST(request: Request) {
         message: "Intent submitted successfully",
       },
     });
-  } catch (error: any) {
-    console.error("Error submitting intent to blockchain:", error);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("Error submitting intent to blockchain:", err);
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to submit intent to blockchain",
+        error: err.message || "Failed to submit intent to blockchain",
         // Include more details in development
         ...(process.env.NODE_ENV === "development" && {
-          stack: error.stack,
-          details: error.details,
+          stack: err.stack,
+          details:
+            "details" in err
+              ? (err as { details: unknown }).details
+              : undefined,
         }),
       },
       { status: 500 }

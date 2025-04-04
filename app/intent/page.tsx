@@ -59,9 +59,6 @@ const getRandomExamples = (examples: string[], count: number) => {
 
 const randomExamples = getRandomExamples(intentExamples, 4);
 
-
-
-
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -126,50 +123,57 @@ export default function IntentPage() {
       // Use the actual connected wallet address from wagmi
       const walletAddress = address;
 
-      // Use toast.promise to provide feedback during the API call
-      const { intentId } = await toast.promise(
-        // Call the API to submit the intent
-        fetch("/api/intent/submit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            walletAddress,
-            intentPlan: intentResult,
-            originalIntent: intent,
-          }),
-        }).then(async (response) => {
-          const data = await response.json();
+      // Define the response type
+      interface IntentSubmitResponse {
+        intentId: string;
+        [key: string]: unknown;
+      }
 
-          if (!response.ok) {
-            throw new Error(data.error || "Failed to submit intent");
-          }
+      // Show loading toast
+      toast.loading("Submitting intent to the blockchain...");
 
-          if (!data.success) {
-            throw new Error(data.error || "Failed to submit intent");
-          }
-
-          return data.data;
+      // Execute fetch separately
+      const response = await fetch("/api/intent/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          walletAddress,
+          intentPlan: intentResult,
+          originalIntent: intent,
         }),
-        {
-          loading: "Submitting intent to the blockchain...",
-          success: "Intent submitted successfully!",
-          error: (err) =>
-            err.message || "Failed to submit intent. Please try again.",
-        }
-      );
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to submit intent");
+      }
+
+      // Cast the response data
+      const result = data.data as IntentSubmitResponse;
+
+      // Dismiss loading toast and show success
+      toast.dismiss();
+      toast.success("Intent submitted successfully!");
 
       // Log the intent ID for tracking
-      console.log("Submitted intent with ID:", intentId);
+      console.log("Submitted intent with ID:", result.intentId);
 
       // Redirect to dashboard after a short delay
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 1500);
     } catch (error) {
+      // Dismiss loading toast and show error
+      toast.dismiss();
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit intent. Please try again."
+      );
       console.error("Error submitting intent:", error);
-      // The toast error will be shown by toast.promise
     }
   };
 
