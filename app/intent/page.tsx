@@ -47,21 +47,29 @@ const exampleSubset = [
   "Invest $200 in ETH every Friday, but only when the RSI is below 40",
 ];
 
+// Add a custom type that extends IntentExecutionPlan
+type IntentResultWithMetadata = IntentExecutionPlan & {
+  estimatedCost?: string;
+  estimatedTime?: string;
+};
+
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [intentResult, setIntentResult] = useState<IntentExecutionPlan | null>(
-    null
-  );
+  const [intentResult, setIntentResult] =
+    useState<IntentResultWithMetadata | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionStatus, setExecutionStatus] = useState<
+    Array<{
+      step: number;
+      status: "pending" | "processing" | "complete" | "failed";
+      txHash?: string;
+    }>
+  >([]);
 
   const { isConnected } = useAccount();
 
   const handleProcessIntent = async () => {
-    if (!intent) {
-      toast.error("Please enter your financial intent");
-      return;
-    }
-
     setIsProcessing(true);
     try {
       const lowerIntent = intent.toLowerCase().trim();
@@ -202,6 +210,62 @@ export default function IntentPage() {
     }, 100);
   };
 
+  const executeIntent = async () => {
+    if (!intentResult || !isConnected) return;
+
+    setIsExecuting(true);
+    setExecutionStatus(
+      intentResult.steps.map((_, index) => ({
+        step: index,
+        status: "pending",
+      }))
+    );
+
+    try {
+      for (let i = 0; i < intentResult.steps.length; i++) {
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === i ? { ...status, status: "processing" } : status
+          )
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const fakeTxHash = `0x${Math.random().toString(16).substring(2, 42)}`;
+
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === i
+              ? { ...status, status: "complete", txHash: fakeTxHash }
+              : status
+          )
+        );
+
+        toast.success(
+          `Completed step ${i + 1}: ${intentResult.steps[i].description}`
+        );
+      }
+
+      toast.success("Intent execution completed successfully!");
+    } catch (error) {
+      console.error("Error executing intent:", error);
+      toast.error("Failed to execute intent. Please try again.");
+
+      const currentStep = executionStatus.findIndex(
+        (s) => s.status === "processing"
+      );
+      if (currentStep !== -1) {
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === currentStep ? { ...status, status: "failed" } : status
+          )
+        );
+      }
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col">
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
@@ -285,9 +349,59 @@ export default function IntentPage() {
                                 <span className="text-xs text-muted-foreground">
                                   ({step.chain})
                                 </span>
+                                {executionStatus.length > 0 && (
+                                  <span className="ml-2">
+                                    {executionStatus[i]?.status === "pending" &&
+                                      "⏳"}
+                                    {executionStatus[i]?.status ===
+                                      "processing" && "⚙️"}
+                                    {executionStatus[i]?.status ===
+                                      "complete" && "✅"}
+                                    {executionStatus[i]?.status === "failed" &&
+                                      "❌"}
+                                  </span>
+                                )}
+                                {executionStatus[i]?.txHash && (
+                                  <span className="text-xs ml-2 text-blue-500">
+                                    Tx:{" "}
+                                    {executionStatus[i]?.txHash.substring(
+                                      0,
+                                      10
+                                    )}
+                                    ...
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ol>
+                        </div>
+                        <div className="flex justify-end mt-4">
+                          {isExecuting ? (
+                            <Button disabled>
+                              <span className="animate-spin mr-2">⚙️</span>{" "}
+                              Executing...
+                            </Button>
+                          ) : executionStatus.length > 0 &&
+                            executionStatus.every(
+                              (s) => s.status === "complete"
+                            ) ? (
+                            <Button
+                              variant="outline"
+                              className="bg-green-50 text-green-600 border-green-200"
+                            >
+                              ✅ Execution Complete
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={executeIntent}
+                              disabled={!isConnected}
+                              className="bg-gradient-to-r from-purple-600 to-blue-500 text-white"
+                            >
+                              {!isConnected
+                                ? "Connect Wallet to Execute"
+                                : "Execute This Intent"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
