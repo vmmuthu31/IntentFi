@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -96,28 +95,6 @@ export default function IntentPage() {
 
   return (
     <main className="flex min-h-screen flex-col">
-      {/* Navbar */}
-      <nav className="w-full py-4 px-6 flex justify-between items-center border-b">
-        <h1 className="text-2xl font-bold">
-          <Link href="/">IntentFi</Link>
-        </h1>
-        <div className="flex gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost">Dashboard</Button>
-          </Link>
-          <Link href="/intent">
-            <Button variant="ghost">Create Intent</Button>
-          </Link>
-          <Link href="/identity">
-            <Button variant="ghost">Identity</Button>
-          </Link>
-          <Link href="/analytics">
-            <Button variant="ghost">Analytics</Button>
-          </Link>
-          <Button>0x1234...5678</Button>
-        </div>
-      </nav>
-
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
         <h1 className="text-3xl font-bold mb-6">Create New Intent</h1>
 
