@@ -47,7 +47,7 @@ export function MainNav({ className }: MainNavProps) {
               pathname === item.href ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <span className="mr-1">{item.icon}</span>
+            {/* <span className="mr-1">{item.icon}</span> */}
             {item.title}
             {pathname === item.href && (
               <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 transform" />
