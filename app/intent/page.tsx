@@ -211,30 +211,35 @@ export default function IntentPage() {
                       onChange={(e) => setIntent(e.target.value)}
                       className="min-h-32"
                     />
-                    <StandaloneFormDescription className="">
-                      You can specify chains, tokens, percentages, and
-                      conditions.
-                    </StandaloneFormDescription>
-                    <div>
-                      <h3 className="text-sm font-medium">
-                        Example intents to try:
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      {randomExamples.map((example, index) => (
-                        <div key={index} className="w-full flex justify-center">
-                          <Button
-                            variant="outline"
-                            className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
-                            onClick={() => setIntent(example)}
-                          >
-                            {example}
-                          </Button>
+                    {!intentResult && (
+                      <StandaloneFormDescription className="">
+                        You can specify chains, tokens, percentages, and
+                        conditions.
+                      </StandaloneFormDescription>
+                    )}
+                    {!intentResult && (
+                      <div>
+                        <div>
+                          <h3 className="text-sm font-medium">
+                            Example intents to try:
+                          </h3>
                         </div>
-                      ))}
-                    </div>
+                        <div className="grid grid-cols-2 gap-4 mt-2">
+                          {randomExamples.map((example, index) => (
+                            <div key={index} className="w-full flex justify-center">
+                              <Button
+                                variant="outline"
+                                className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
+                                onClick={() => setIntent(example)}
+                              >
+                                {example}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-
                   {intentResult && (
                     <div className="border rounded-lg p-4">
                       <h3 className="font-medium mb-2">
