@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AnimatedTitle from "@/components/animations/animatedTile";
+import TypewriterEffect from "@/components/animations/TypewriterEffect";
 
 const features = [
   {
@@ -66,11 +68,24 @@ export default function Home() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
             <div className="flex-1 space-y-6">
+              <div className="flex flex-row gap-2">
+              </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                <span className="block">Cross-Chain</span>
-                <span className="block bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
-                  Intent Finance
-                </span>
+                <AnimatedTitle 
+                  text="Cross-Chain"
+                  className="block hover:cursor-pointer"
+                />
+                <AnimatedTitle 
+                  text="Intent "
+                  className="inline hover:cursor-pointer"
+                >
+                  <span className="inline-block min-w-[7ch]">
+                    <TypewriterEffect 
+                      text="Finance"
+                      className="bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 bg-clip-text text-transparent"
+                    />
+                  </span>
+                </AnimatedTitle>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-xl">
                 Express financial goals in natural language. We&apos;ll execute
