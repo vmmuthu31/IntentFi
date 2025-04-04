@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import * as React from "react";
 import { IntentHistory } from "@/components/intent/intent-history";
+import { IntentExecutionPlan } from "@/lib/services/intent-service";
+
 // Standalone form components that don't rely on FormContext
 const StandaloneFormLabel = ({
   htmlFor,
@@ -41,56 +44,112 @@ const StandaloneFormDescription = ({
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [intentResult, setIntentResult] = useState<null | {
-    steps: { description: string; chain: string }[];
-    estimatedCost: string;
-    estimatedTime: string;
-  }>(null);
+  const [intentResult, setIntentResult] = useState<IntentExecutionPlan | null>(
+    null
+  );
 
-  const processIntent = () => {
+  // Get account from wagmi instead of our custom hook
+  const { address, isConnected } = useAccount();
+
+  const handleProcessIntent = async () => {
     if (!intent) {
       toast.error("Please enter your financial intent");
       return;
     }
 
     setIsProcessing(true);
-
-    // Simulate API call to process intent
-    setTimeout(() => {
-      // Mock response - in a real app, this would come from your intent processing service
-      setIntentResult({
-        steps: [
-          {
-            description: "Check current USDC balances across chains",
-            chain: "Multiple",
-          },
-          {
-            description: "Query yield rates across DeFi protocols",
-            chain: "Multiple",
-          },
-          {
-            description: "Bridge 3,000 USDC from Ethereum to Polygon",
-            chain: "Ethereum → Polygon",
-          },
-          {
-            description: "Deposit 3,000 USDC into Aave on Polygon",
-            chain: "Polygon",
-          },
-          { description: "Set up monitoring for better rates", chain: "N/A" },
-        ],
-        estimatedCost: "$2.50",
-        estimatedTime: "~3 minutes",
+    try {
+      // Call the dedicated API endpoint for processing
+      const response = await fetch("/api/intent/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ intent }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process intent");
+      }
+
+      if (data.success) {
+        setIntentResult(data.data);
+        toast.success("Intent processed successfully");
+      } else {
+        throw new Error(data.error || "Failed to process intent");
+      }
+    } catch (error) {
+      console.error("Error processing intent:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Error processing intent. Please try again."
+      );
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
-  const confirmIntent = () => {
-    toast.success("Intent submitted successfully");
-    // Would redirect to dashboard in real implementation
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 1500);
+  const confirmIntent = async () => {
+    if (!intentResult) return;
+
+    // Check if wallet is connected
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    try {
+      // Use the actual connected wallet address from wagmi
+      const walletAddress = address;
+
+      // Use toast.promise to provide feedback during the API call
+      const { intentId } = await toast.promise(
+        // Call the API to submit the intent
+        fetch("/api/intent/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            walletAddress,
+            intentPlan: intentResult,
+            originalIntent: intent,
+          }),
+        }).then(async (response) => {
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to submit intent");
+          }
+
+          if (!data.success) {
+            throw new Error(data.error || "Failed to submit intent");
+          }
+
+          return data.data;
+        }),
+        {
+          loading: "Submitting intent to the blockchain...",
+          success: "Intent submitted successfully!",
+          error: (err) =>
+            err.message || "Failed to submit intent. Please try again.",
+        }
+      );
+
+      // Log the intent ID for tracking
+      console.log("Submitted intent with ID:", intentId);
+
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
+    } catch (error) {
+      console.error("Error submitting intent:", error);
+      // The toast error will be shown by toast.promise
+    }
   };
 
   return (
@@ -179,13 +238,17 @@ export default function IntentPage() {
                 </Button>
                 {!intentResult ? (
                   <Button
-                    onClick={processIntent}
+                    onClick={handleProcessIntent}
                     disabled={isProcessing || !intent}
                   >
                     {isProcessing ? "Processing..." : "Process Intent"}
                   </Button>
                 ) : (
-                  <Button onClick={confirmIntent}>Confirm & Execute</Button>
+                  <Button onClick={confirmIntent} disabled={!isConnected}>
+                    {!isConnected
+                      ? "Connect Wallet to Execute"
+                      : "Confirm & Execute"}
+                  </Button>
                 )}
               </CardFooter>
             </Card>
@@ -248,7 +311,7 @@ export default function IntentPage() {
                       className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
                       onClick={() => {
                         setIntent(
-                          "Maintain a balanced portfolio that&apos;s 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions"
+                          "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions"
                         );
                         document
                           .getElementById("intent")

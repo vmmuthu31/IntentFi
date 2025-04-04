@@ -8,14 +8,14 @@ import { ReactNode } from "react";
 
 const config = getDefaultConfig({
   appName: "IntentFI",
-  projectId: "cfe241931d7e9edcb0207c51b7f84e63",
+  projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "",
   chains: [celo, saga, base, rootstock, polygon],
   ssr: true,
 });
 
 const queryClient = new QueryClient();
 
-const WalletButtonProvider = ({ children }: { children: ReactNode }) => {
+const WalletProvider = ({ children }: { children: ReactNode }) => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
@@ -25,4 +25,4 @@ const WalletButtonProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export default WalletButtonProvider;
+export default WalletProvider;
