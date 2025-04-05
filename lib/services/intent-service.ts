@@ -11,6 +11,7 @@ import { integration } from "./integration";
 export interface IntentStep {
   description: string;
   chain: string;
+  transactionHash?: string;
 }
 
 export interface IntentExecutionPlan {
@@ -66,7 +67,7 @@ async function processWithClaude(
 The JSON should have this format:
 {
   "steps": [
-    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 'N/A'"},
+    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 4" if no pool id is provided take 4 as the value},
   ],
 }
 
