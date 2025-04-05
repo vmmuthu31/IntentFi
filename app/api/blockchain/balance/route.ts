@@ -1,7 +1,7 @@
 // app/api/blockchain/balance/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenPrice } from "@/lib/services/blockchain-service";
+import { getTokenBalance } from "@/lib/services/integration";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,19 +25,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const price = await getTokenPrice(token, chainId);
+    const balance = await getTokenBalance({ chainId, token });
+    console.log("balance", balance);
 
     return NextResponse.json({
       success: true,
-      price,
+      balance: BigInt(balance as bigint).toString(),
     });
   } catch (error) {
-    console.error("Error getting token price:", error);
+    console.error("Error getting token balance:", error);
     return NextResponse.json(
       {
         success: false,
         error:
-          error instanceof Error ? error.message : "Failed to get token price",
+          error instanceof Error
+            ? error.message
+            : "Failed to get token balance",
       },
       { status: 500 }
     );
