@@ -1,15 +1,22 @@
-import mongoose from 'mongoose';
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mongoose: { conn: any; promise: any } | undefined;
+}
+
+import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.NEXT_PUBLIC_MONGO_URI as string;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
+  throw new Error("Please define the MONGODB_URI environment variable");
 }
 
-let cached = global.mongoose;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cached = (globalThis as any).mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cached = (globalThis as any).mongoose = { conn: null, promise: null };
 }
 
 export async function connect() {
@@ -28,4 +35,4 @@ export async function connect() {
   }
   cached.conn = await cached.promise;
   return cached.conn;
-} 
+}

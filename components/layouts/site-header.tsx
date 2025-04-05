@@ -4,7 +4,6 @@ import React from "react";
 import { MainNav } from "@/components/layouts/main-nav";
 import { Logo } from "@/components/ui/logo";
 import WalletConnect from "../ui/WalletConnect";
-import { ThemeToggle } from "../theme-toggle";
 import { MobileNav } from "./mobile-nav";
 
 export function SiteHeader() {
@@ -16,7 +15,6 @@ export function SiteHeader() {
         <MobileNav />
         <div className="md:flex hidden items-center gap-4">
           <WalletConnect />
-          <ThemeToggle />
         </div>
       </div>
     </header>

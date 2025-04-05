@@ -1,7 +1,7 @@
 // app/api/blockchain/balance/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenBalance } from "@/lib/services/integration";
+import { integration } from "@/lib/services/integration";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,12 +25,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const balance = await getTokenBalance({ chainId, token });
+    const balance = await integration.getTokenBalance({ chainId, token });
     console.log("balance", balance);
 
     return NextResponse.json({
       success: true,
-      balance: BigInt(balance as bigint).toString(),
+      balance: balance.toString(),
     });
   } catch (error) {
     console.error("Error getting token balance:", error);

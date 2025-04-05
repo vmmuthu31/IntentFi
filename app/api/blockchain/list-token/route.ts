@@ -4,9 +4,9 @@ import { integration } from "@/lib/services/integration";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { chainId, token, amount } = body;
+    const { chainId, tokenAddress } = body;
 
-    if (!chainId || !token || !amount) {
+    if (!chainId || !tokenAddress) {
       return NextResponse.json(
         {
           success: false,
@@ -16,23 +16,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await integration.withdraw({
+    const result = await integration.listToken({
       chainId,
-      token,
-      amount,
+      tokenAddress,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Withdrawal successful",
+      message: "List token successful",
       data: result,
     });
   } catch (error) {
-    console.error("Error in withdraw:", error);
+    console.error("Error in list token:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to process withdrawal",
+        message: "Failed to process list token",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
