@@ -101,12 +101,11 @@ Our AI parses the input and builds an **executable DAG (Directed Acyclic Graph)*
 
 ## 🤝 Bounty Integrations
 
-### 🌱 Saga
-- **Why:** Modular chains with native intent support
+### 🌱 Self Protocol
+- **Why:** One-time, privacy-preserving KYC for compliant DeFi
 - **How We Used It:**
-  - Created a dedicated Saga chain to run execution logic and strategy DAG computation in a scalable, low-latency environment.
-  - Integrated with Saga's interchain messaging to offload intensive computation from L1.
-- **Impact:** Faster strategy execution and gasless coordination.
+  - Enabled one-time KYC verification using Self Protocol’s decentralized identity layer. Issued verifiable credentials to users, allowing them to execute lending, borrowing, and yield strategies across chains without repeating compliance steps.
+- **Impact:** Seamless compliance integration across all intents — unlocking secure, gasless, and institution-ready DeFi execution.
 
 ### ₿ Rootstock (RSK)
 - **Why:** Native Bitcoin-based DeFi
@@ -136,9 +135,8 @@ We're building DeFi for the next billion users — by making it invisible.
 ### ✅ Core Layers
 - **Intent Parsing:** LLM-powered agent
 - **Automation:** Auto-yield monitoring, rebalancing, exit triggers
-- **Gasless UX:** Zircuit AA + Circle Paymaster
-- **Compliance:** Self Protocol + HashKey Chain
-- **Cross-Chain Infra:** Hyperlane (Open Intents), Circle CCTP
+- **Gasless UX:** Paymaster
+- **Compliance:** Self Protocol
 - **Frontend:** Next.js + Tailwind
 - **Backend:** Node.js + Firebase
 
