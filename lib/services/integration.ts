@@ -959,10 +959,12 @@ const repay = async ({
       ];
     const chain = networkConfig.chain;
 
+    const tokenAmount = parseUnits(amount, 18);
+
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "repay",
-      args: [tokenAddress, BigInt(amount), account.address],
+      args: [tokenAddress, tokenAmount, account.address],
     });
 
     const gasLimit = BigInt(200000);

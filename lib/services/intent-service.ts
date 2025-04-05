@@ -114,7 +114,7 @@ const NETWORK_CONFIGS = {
    - For deposits: Use function "deposit" if the intent contains words like "deposit", "add", "put in", "transfer to", "send to", "invest"
    - For withdrawals: Use function "withdraw" if the intent contains words like "withdraw", "take out", "remove", "get back", "pull out", "transfer from"
    - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
-
+   - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
 Here's my intent: "${intent}"
 
 Return ONLY the JSON with no other text.`,
@@ -238,6 +238,24 @@ Return ONLY the JSON with no other text.`,
               receipt: borrowResult.receipt
             }
           }
+        };
+      } else if (functionName == "repay") {
+        const numericChainId = parseInt(chainId, 10);
+        const repayResult = await integration.repay({
+          chainId: numericChainId,
+          token,
+          amount,
+        });
+      
+        result = {
+          steps: [
+            {
+              description: `Repaid ${amount} ${token} on ${chain}. Transaction ${
+                repayResult.success ? "succeeded" : "failed"
+              }: ${repayResult.transactionHash}`,
+              chain,
+            },
+          ],
         };
       } else {
         result = {
