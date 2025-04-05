@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import * as React from "react";
 import { IntentHistory } from "@/components/intent/intent-history";
-// Standalone form components that don't rely on FormContext
+import { IntentExecutionPlan } from "@/lib/services/intent-service";
+
 const StandaloneFormLabel = ({
   htmlFor,
   children,
@@ -38,86 +40,238 @@ const StandaloneFormDescription = ({
   </p>
 );
 
-const intentExamples = [
-  "I want to earn the highest yield on my USDC across all chains",
-  "Convert 50% of my Bitcoin to a diversified DeFi portfolio",
-  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
-  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
-  "Move all my assets from Ethereum to Polygon to reduce gas fees",
+const exampleSubset = [
   "Automatically sell 10% of my ETH when it reaches $5,000",
+  "Move all my assets from Ethereum to Polygon to reduce gas fees",
+  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
+  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
 ];
 
-const getRandomExamples = (examples: string[], count: number) => {
-  // Shuffle the array
-  const shuffled = [...examples].sort(() => 0.5 - Math.random());
-  // Return the first 'count' elements
-  return shuffled.slice(0, count);
+// Add a custom type that extends IntentExecutionPlan
+type IntentResultWithMetadata = IntentExecutionPlan & {
+  estimatedCost?: string;
+  estimatedTime?: string;
 };
-
-const randomExamples = getRandomExamples(intentExamples, 4);
-
-
-
 
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [intentResult, setIntentResult] = useState<null | {
-    steps: { description: string; chain: string }[];
-    estimatedCost: string;
-    estimatedTime: string;
-  }>(null);
+  const [intentResult, setIntentResult] =
+    useState<IntentResultWithMetadata | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionStatus, setExecutionStatus] = useState<
+    Array<{
+      step: number;
+      status: "pending" | "processing" | "complete" | "failed";
+      txHash?: string;
+    }>
+  >([]);
 
-  const processIntent = () => {
-    if (!intent) {
-      toast.error("Please enter your financial intent");
-      return;
-    }
+  const { isConnected } = useAccount();
 
+  const handleProcessIntent = async () => {
     setIsProcessing(true);
+    try {
+      const lowerIntent = intent.toLowerCase().trim();
 
-    // Simulate API call to process intent
-    setTimeout(() => {
-      // Mock response - in a real app, this would come from your intent processing service
-      setIntentResult({
-        steps: [
-          {
-            description: "Check current USDC balances across chains",
-            chain: "Multiple",
-          },
-          {
-            description: "Query yield rates across DeFi protocols",
-            chain: "Multiple",
-          },
-          {
-            description: "Bridge 3,000 USDC from Ethereum to Polygon",
-            chain: "Ethereum → Polygon",
-          },
-          {
-            description: "Deposit 3,000 USDC into Aave on Polygon",
-            chain: "Polygon",
-          },
-          { description: "Set up monitoring for better rates", chain: "N/A" },
-        ],
-        estimatedCost: "$2.50",
-        estimatedTime: "~3 minutes",
+      if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
+        setIntentResult({
+          steps: [
+            {
+              description:
+                "Hello! I'm your financial assistant. How can I help with your investments today?",
+              chain: "N/A",
+            },
+          ],
+        });
+        toast.success("Greeting acknowledged");
+        setIsProcessing(false);
+        return;
+      }
+
+      const financialKeywords = [
+        "invest",
+        "yield",
+        "earn",
+        "stake",
+        "swap",
+        "trade",
+        "buy",
+        "sell",
+        "token",
+        "coin",
+        "crypto",
+        "nft",
+        "defi",
+        "eth",
+        "btc",
+        "bitcoin",
+        "ethereum",
+        "usdc",
+        "usdt",
+        "dai",
+        "portfolio",
+        "asset",
+        "balance",
+        "wallet",
+        "chain",
+        "blockchain",
+        "bridge",
+        "transfer",
+        "liquidity",
+        "pool",
+        "apy",
+        "interest",
+        "loan",
+        "borrow",
+        "lend",
+        "collateral",
+        "leverage",
+        "position",
+        "protocol",
+        "smart contract",
+        "rebalance",
+        "diversify",
+        "risk",
+        "profit",
+        "loss",
+        "dollar",
+        "$",
+        "percentage",
+        "%",
+        "price",
+        "value",
+      ];
+
+      const isQuestionPattern =
+        /^(who|what|when|where|why|how|is|are|can|could|do|does|which|whose)\s/i.test(
+          lowerIntent
+        );
+
+      const containsFinancialKeyword = financialKeywords.some((keyword) =>
+        lowerIntent.includes(keyword)
+      );
+
+      if (
+        (isQuestionPattern && !containsFinancialKeyword) ||
+        (!containsFinancialKeyword && lowerIntent.length < 15)
+      ) {
+        setIntentResult({
+          steps: [
+            {
+              description:
+                "I'm specialized in financial intents and DeFi operations. Please provide a finance-related request like 'Earn yield on USDC' or 'Invest in ETH weekly'.",
+              chain: "N/A",
+            },
+          ],
+        });
+        toast.info("Please provide a financial intent");
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch("/api/intent/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ intent }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process intent");
+      }
+
+      if (data.success) {
+        setIntentResult(data.data);
+        toast.success("Intent processed successfully");
+      } else {
+        throw new Error(data.error || "Failed to process intent");
+      }
+    } catch (error) {
+      console.error("Error processing intent:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Error processing intent. Please try again."
+      );
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
-  const confirmIntent = () => {
-    toast.success("Intent submitted successfully");
-    // Would redirect to dashboard in real implementation
+  const handleExampleClick = (exampleText: string) => {
+    setIntent(exampleText);
+
     setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 1500);
+      handleProcessIntent();
+    }, 100);
+  };
+
+  const executeIntent = async () => {
+    if (!intentResult || !isConnected) return;
+
+    setIsExecuting(true);
+    setExecutionStatus(
+      intentResult.steps.map((_, index) => ({
+        step: index,
+        status: "pending",
+      }))
+    );
+
+    try {
+      for (let i = 0; i < intentResult.steps.length; i++) {
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === i ? { ...status, status: "processing" } : status
+          )
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const fakeTxHash = `0x${Math.random().toString(16).substring(2, 42)}`;
+
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === i
+              ? { ...status, status: "complete", txHash: fakeTxHash }
+              : status
+          )
+        );
+
+        toast.success(
+          `Completed step ${i + 1}: ${intentResult.steps[i].description}`
+        );
+      }
+
+      toast.success("Intent execution completed successfully!");
+    } catch (error) {
+      console.error("Error executing intent:", error);
+      toast.error("Failed to execute intent. Please try again.");
+
+      const currentStep = executionStatus.findIndex(
+        (s) => s.status === "processing"
+      );
+      if (currentStep !== -1) {
+        setExecutionStatus((prev) =>
+          prev.map((status, idx) =>
+            idx === currentStep ? { ...status, status: "failed" } : status
+          )
+        );
+      }
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-6">Create New Intent</h1>
+        <h1 className="text-3xl text-white font-bold mb-6">
+          Create New Intent
+        </h1>
 
         <Tabs defaultValue="natural" className="w-full">
           <TabsList className="w-full md:w-auto mb-6">
@@ -162,12 +316,15 @@ export default function IntentPage() {
                           </h3>
                         </div>
                         <div className="grid grid-cols-2 gap-4 mt-2">
-                          {randomExamples.map((example, index) => (
-                            <div key={index} className="w-full flex justify-center">
+                          {exampleSubset.map((example, index) => (
+                            <div
+                              key={index}
+                              className="w-full flex justify-center"
+                            >
                               <Button
                                 variant="outline"
                                 className="border-gray-50 hover:cursor-pointer bg-opacity-10 opacity-50 w-full text-left whitespace-normal break-words p-2 h-full flex items-center justify-center hover:opacity-100 transition-opacity duration-300"
-                                onClick={() => setIntent(example)}
+                                onClick={() => handleExampleClick(example)}
                               >
                                 {example}
                               </Button>
@@ -194,23 +351,59 @@ export default function IntentPage() {
                                 <span className="text-xs text-muted-foreground">
                                   ({step.chain})
                                 </span>
+                                {executionStatus.length > 0 && (
+                                  <span className="ml-2">
+                                    {executionStatus[i]?.status === "pending" &&
+                                      "⏳"}
+                                    {executionStatus[i]?.status ===
+                                      "processing" && "⚙️"}
+                                    {executionStatus[i]?.status ===
+                                      "complete" && "✅"}
+                                    {executionStatus[i]?.status === "failed" &&
+                                      "❌"}
+                                  </span>
+                                )}
+                                {executionStatus[i]?.txHash && (
+                                  <span className="text-xs ml-2 text-blue-500">
+                                    Tx:{" "}
+                                    {executionStatus[i]?.txHash.substring(
+                                      0,
+                                      10
+                                    )}
+                                    ...
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ol>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Estimated Cost:
-                            </span>{" "}
-                            {intentResult.estimatedCost}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">
-                              Estimated Time:
-                            </span>{" "}
-                            {intentResult.estimatedTime}
-                          </div>
+                        <div className="flex justify-end mt-4">
+                          {isExecuting ? (
+                            <Button disabled>
+                              <span className="animate-spin mr-2">⚙️</span>{" "}
+                              Executing...
+                            </Button>
+                          ) : executionStatus.length > 0 &&
+                            executionStatus.every(
+                              (s) => s.status === "complete"
+                            ) ? (
+                            <Button
+                              variant="outline"
+                              className="bg-green-50 text-green-600 border-green-200"
+                            >
+                              ✅ Execution Complete
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={executeIntent}
+                              disabled={!isConnected}
+                              className="bg-gradient-to-r from-purple-600 to-blue-500 text-white"
+                            >
+                              {!isConnected
+                                ? "Connect Wallet to Execute"
+                                : "Execute This Intent"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -221,160 +414,21 @@ export default function IntentPage() {
                 <Button variant="outline" onClick={() => setIntent("")}>
                   Clear
                 </Button>
-                {!intentResult ? (
+                {/* if no wallet connected then dontallow to process intent   */}
+                {!isConnected ? (
+                  <Button variant="outline" disabled>
+                    Connect Wallet to Process Intent
+                  </Button>
+                ) : (
                   <Button
-                    onClick={processIntent}
+                    onClick={handleProcessIntent}
                     disabled={isProcessing || !intent}
                   >
                     {isProcessing ? "Processing..." : "Process Intent"}
                   </Button>
-                ) : (
-                  <Button onClick={confirmIntent}>Confirm & Execute</Button>
                 )}
               </CardFooter>
             </Card>
-
-            {/* Example Intents Section */}
-            {/* <div className="mt-8 border rounded-lg p-6 bg-muted/30">
-              <h3 className="text-lg font-medium mb-3">
-                Example Intents to Try
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Click any example to use it as your intent. Our AI can
-                understand various financial goals:
-              </p>
-
-              <div className="grid gap-6 mb-6">
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🔍 Yield Optimization
-                  </h4>
-                  <div
-                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      setIntent(
-                        "I want to earn the highest yield on my USDC across all chains"
-                      );
-                      document
-                        .getElementById("intent")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    <p className="text-sm">
-                      I want to earn the highest yield on my USDC across all
-                      chains
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🔄 Portfolio Rebalancing
-                  </h4>
-                  <div className="grid gap-3">
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Convert 50% of my Bitcoin to a diversified DeFi portfolio"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Convert 50% of my Bitcoin to a diversified DeFi
-                        portfolio
-                      </p>
-                    </div>
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Maintain a balanced portfolio that&apos;s 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Maintain a balanced portfolio that&apos;s 40%
-                        stablecoins, 30% blue-chip crypto, and 30%
-                        yield-generating positions
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    ⏱️ Automated Trading
-                  </h4>
-                  <div className="grid gap-3">
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Invest $200 in ETH every Friday, but only when the RSI is below 40"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Invest $200 in ETH every Friday, but only when the RSI
-                        is below 40
-                      </p>
-                    </div>
-                    <div
-                      className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setIntent(
-                          "Automatically sell 10% of my ETH when it reaches $5,000"
-                        );
-                        document
-                          .getElementById("intent")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      <p className="text-sm">
-                        Automatically sell 10% of my ETH when it reaches $5,000
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-primary mb-2">
-                    🌉 Cross-Chain Operations
-                  </h4>
-                  <div
-                    className="p-3 border rounded-md bg-card hover:border-primary/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      setIntent(
-                        "Move all my assets from Ethereum to Polygon to reduce gas fees"
-                      );
-                      document
-                        .getElementById("intent")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                  >
-                    <p className="text-sm">
-                      Move all my assets from Ethereum to Polygon to reduce gas
-                      fees
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground italic">
-                IntentFi can handle complex combinations of these operations,
-                with conditions, timing requirements, and multi-step workflows.
-              </p>
-            </div> */}
           </TabsContent>
 
           <TabsContent value="template">

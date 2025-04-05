@@ -4,7 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/layouts/site-header";
 import { siteConfig } from "@/lib/utils/site-config";
-import WalletButtonProvider from "@/lib/services/walletbutton";
+import { Toaster } from "sonner";
+import WalletProvider from "@/lib/provider/walletProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,12 +73,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <WalletButtonProvider>
+          <WalletProvider>
             <div className="relative flex min-h-screen flex-col">
               <SiteHeader />
               <main className="flex-1">{children}</main>
             </div>
-          </WalletButtonProvider>
+            <Toaster position="top-right" richColors closeButton />
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>
