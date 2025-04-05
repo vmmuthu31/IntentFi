@@ -21,7 +21,7 @@ export default function VerifyPage() {
   const [verificationStatus, setVerificationStatus] = useState("notStarted");
   const [loading, setLoading] = useState(false);
 
-  const identityVerifierAddress = "0x10327cFd515021397d1E1dADc5b706D9BA2Ee48b";
+  const identityVerifierAddress = "0x20b361b25a9874b436F3A5e1D283735ea0c9E888";
 
   const selfApp = React.useMemo(() => {
     if (!address) return null;
@@ -29,8 +29,8 @@ export default function VerifyPage() {
     return new SelfAppBuilder({
       appName: "IntentFi",
       scope: "5949212",
-      endpoint: identityVerifierAddress,
-      endpointType: "staging_celo",
+      endpoint: "https://8301-111-235-226-130.ngrok-free.app/api/verify",
+      endpointType: "https",
       logoBase64: "https://i.ibb.co/kvX4fyr/Logo-Intent-Fi.png",
       userId: address,
       userIdType: "hex",
@@ -687,3 +687,8 @@ export default function VerifyPage() {
     </div>
   );
 }
+
+// add the verify.ts from happy birthday
+// use ngrok http 3000
+// generate the new scope with hashEndpointWithScope and ngrok url and use this inthe contract constructor
+// in the qr code, add the normal scope, new endpoint, endpointype = staging_https | https
