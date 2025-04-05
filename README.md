@@ -129,6 +129,27 @@ IntentFi aims to become the operating system for intent-driven finance — where
 We're building DeFi for the next billion users — by making it invisible.
 
 ---
+## Deployed Contract
+
+###CELO
+
+PriceOracle: https://alfajores.celoscan.io/address/0x308b659C3B437cFB4F54573E9C3C03acEb8B5205
+LendingPool: https://alfajores.celoscan.io/address/0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D
+YieldFarm: https://alfajores.celoscan.io/address/0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44
+DeFIPlatform: https://alfajores.celoscan.io/address/0x649f3f2F4aB598272f2796401968ed74CBeA948c
+Identity Verifier: https://alfajores.celoscan.io/address/0x0c5c95131F3D573330d81Ab811B2eD15F9fe98a9
+KYC LENDING POOL: https://alfajores.celoscan.io/address/0x015F0eC2A28684E3d4CdbC0FcE60607c4842f211
+
+###ROOTSTOCK
+
+PriceOracle: https://explorer.testnet.rootstock.io/address/0xc6C9FE196408c0Ade5F394d930cF90Ebab66511e
+LendingPool: https://explorer.testnet.rootstock.io/address/0x60b588582b8308b9b41966fBd38821F31AA06537
+YieldFarming: https://explorer.testnet.rootstock.io/address/0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee
+DeFIPlatform: https://explorer.testnet.rootstock.io/address/0x653c13Fb7C1E5d855448af2A385F2D97a623384E
+RBTC Token address: https://explorer.testnet.rootstock.io/address/0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1
+
+
+---
 
 ## 🛠 Tech Stack
 
