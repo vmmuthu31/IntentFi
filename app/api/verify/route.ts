@@ -1,11 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import {
-  getUserIdentifier,
-  SelfBackendVerifier,
-  countryCodes,
-} from "@selfxyz/core";
-import { kv } from "@vercel/kv";
-import { SelfApp } from "@selfxyz/qrcode";
+import { getUserIdentifier } from "@selfxyz/core";
+import { ethers } from "ethers";
+import abi from "@/artifacts/IdentityVerifier.json";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,159 +17,53 @@ export default async function handler(
           .json({ message: "Proof and publicSignals are required" });
       }
 
-      const userId = await getUserIdentifier(publicSignals);
-      console.log("Extracted userId from verification result:", userId);
+      console.log("Proof:", proof);
+      console.log("Public signals:", publicSignals);
 
-      // Default options
-      let minimumAge;
-      let excludedCountryList: string[] = [];
-      let enableOfac = false;
-      let enabledDisclosures = {
-        issuing_state: false,
-        name: false,
-        nationality: false,
-        date_of_birth: false,
-        passport_number: false,
-        gender: false,
-        expiry_date: false,
-      };
+      const contractAddress = "0xf4bfb24078F21C51B6cF96b8c380091Fd4CA4325";
 
-      // Try to retrieve options from store using userId
-      if (userId) {
-        const savedOptions = (await kv.get(userId)) as SelfApp["disclosures"];
-        if (savedOptions) {
-          console.log("Saved options:", savedOptions);
+      const address = await getUserIdentifier(publicSignals, "hex");
+      console.log("Extracted address from verification result:", address);
 
-          // Apply saved options
-          minimumAge = savedOptions.minimumAge || minimumAge;
-
-          if (
-            savedOptions.excludedCountries &&
-            savedOptions.excludedCountries.length > 0
-          ) {
-            excludedCountryList = savedOptions.excludedCountries;
-          }
-
-          enableOfac =
-            savedOptions.ofac !== undefined ? savedOptions.ofac : enableOfac;
-
-          // Apply all disclosure settings
-          enabledDisclosures = {
-            issuing_state:
-              savedOptions.issuing_state !== undefined
-                ? savedOptions.issuing_state
-                : enabledDisclosures.issuing_state,
-            name:
-              savedOptions.name !== undefined
-                ? savedOptions.name
-                : enabledDisclosures.name,
-            nationality:
-              savedOptions.nationality !== undefined
-                ? savedOptions.nationality
-                : enabledDisclosures.nationality,
-            date_of_birth:
-              savedOptions.date_of_birth !== undefined
-                ? savedOptions.date_of_birth
-                : enabledDisclosures.date_of_birth,
-            passport_number:
-              savedOptions.passport_number !== undefined
-                ? savedOptions.passport_number
-                : enabledDisclosures.passport_number,
-            gender:
-              savedOptions.gender !== undefined
-                ? savedOptions.gender
-                : enabledDisclosures.gender,
-            expiry_date:
-              savedOptions.expiry_date !== undefined
-                ? savedOptions.expiry_date
-                : enabledDisclosures.expiry_date,
-          };
-        } else {
-          console.log("No saved options found for userId:", userId);
-        }
-      } else {
-        console.log(
-          "No userId found in verification result, using default options"
-        );
-      }
-
-      const configuredVerifier = new SelfBackendVerifier(
-        "IntentFi",
-        "https://8301-111-235-226-130.ngrok-free.app/api/verify",
-        "uuid",
-        false
+      const provider = new ethers.providers.JsonRpcProvider(
+        "https://celo-alfajores.infura.io/v3/95c5fe3fe1504b01a8a1c9a3c428a49f"
       );
+      const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+      const contract = new ethers.Contract(contractAddress, abi, signer);
 
-      if (minimumAge !== undefined) {
-        configuredVerifier.setMinimumAge(minimumAge);
-      }
-
-      if (excludedCountryList.length > 0) {
-        configuredVerifier.excludeCountries(
-          ...(excludedCountryList as (keyof typeof countryCodes)[])
-        );
-      }
-
-      if (enableOfac) {
-        configuredVerifier.enableNameAndDobOfacCheck();
-      }
-
-      const result = await configuredVerifier.verify(proof, publicSignals);
-      console.log("Verification result:", result);
-
-      if (result.isValid) {
-        const filteredSubject = { ...result.credentialSubject };
-
-        if (!enabledDisclosures.issuing_state && filteredSubject) {
-          filteredSubject.issuing_state = "Not disclosed";
-        }
-        if (!enabledDisclosures.name && filteredSubject) {
-          filteredSubject.name = "Not disclosed";
-        }
-        if (!enabledDisclosures.nationality && filteredSubject) {
-          filteredSubject.nationality = "Not disclosed";
-        }
-        if (!enabledDisclosures.date_of_birth && filteredSubject) {
-          filteredSubject.date_of_birth = "Not disclosed";
-        }
-        if (!enabledDisclosures.passport_number && filteredSubject) {
-          filteredSubject.passport_number = "Not disclosed";
-        }
-        if (!enabledDisclosures.gender && filteredSubject) {
-          filteredSubject.gender = "Not disclosed";
-        }
-        if (!enabledDisclosures.expiry_date && filteredSubject) {
-          filteredSubject.expiry_date = "Not disclosed";
-        }
-
+      try {
+        const tx = await contract.verifySelfProof({
+          a: proof.a,
+          b: [
+            [proof.b[0][1], proof.b[0][0]],
+            [proof.b[1][1], proof.b[1][0]],
+          ],
+          c: proof.c,
+          pubSignals: publicSignals,
+        });
+        await tx.wait();
+        console.log("Successfully called verifySelfProof function");
         res.status(200).json({
           status: "success",
-          result: result.isValid,
-          credentialSubject: filteredSubject,
-          verificationOptions: {
-            minimumAge,
-            ofac: enableOfac,
-            excludedCountries: excludedCountryList.map((countryName) => {
-              const entry = Object.entries(countryCodes).find(
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                ([_, name]) => name === countryName
-              );
-              return entry ? entry[0] : countryName;
-            }),
-          },
+          result: true,
+          credentialSubject: {},
         });
-      } else {
+      } catch (error) {
+        console.error("Error calling verifySelfProof function:", error);
         res.status(400).json({
           status: "error",
-          result: result.isValid,
-          message: "Verification failed",
-          details: result,
+          result: false,
+          message: "Verification failed or date of birth not disclosed",
+          details: {},
         });
+        throw error;
       }
     } catch (error) {
       console.error("Error verifying proof:", error);
       return res.status(500).json({
+        status: "error",
         message: "Error verifying proof",
+        result: false,
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }

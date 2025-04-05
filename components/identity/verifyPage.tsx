@@ -34,8 +34,10 @@ export default function VerifyPage() {
       logoBase64: "https://i.ibb.co/kvX4fyr/Logo-Intent-Fi.png",
       userId: address,
       userIdType: "hex",
+      devMode: true,
       disclosures: {
         minimumAge: 18,
+        ofac: false,
       },
     }).build();
   }, [address, identityVerifierAddress]);

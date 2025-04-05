@@ -1,0 +1,566 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_identityVerificationHub",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_scope",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_attestationId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_olderThanEnabled",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_olderThan",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_forbiddenCountriesEnabled",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256[4]",
+        "name": "_forbiddenCountriesListPacked",
+        "type": "uint256[4]"
+      },
+      {
+        "internalType": "bool[3]",
+        "name": "_ofacEnabled",
+        "type": "bool[3]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "INSUFFICIENT_CHARCODE_LEN",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidAttestationId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidFieldElement",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidScope",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "nationality",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "residenceCountry",
+        "type": "string"
+      }
+    ],
+    "name": "manuallyVerifyUserKYC",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "RegisteredNullifier",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "revokeUserKYC",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "olderThanEnabled",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "olderThan",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "forbiddenCountriesEnabled",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256[4]",
+            "name": "forbiddenCountriesListPacked",
+            "type": "uint256[4]"
+          },
+          {
+            "internalType": "bool[3]",
+            "name": "ofacEnabled",
+            "type": "bool[3]"
+          }
+        ],
+        "internalType": "struct ISelfVerificationRoot.VerificationConfig",
+        "name": "newVerificationConfig",
+        "type": "tuple"
+      }
+    ],
+    "name": "updateVerificationConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newExpiryTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateVerificationExpiryTime",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "UserNotVerified",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "VerificationExpired",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "UserVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "olderThanEnabled",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "olderThan",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "forbiddenCountriesEnabled",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "ofacEnabled",
+        "type": "bool"
+      }
+    ],
+    "name": "VerificationConfigUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newExpiryTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "VerificationExpiryTimeUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "VerificationRevoked",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256[2]",
+            "name": "a",
+            "type": "uint256[2]"
+          },
+          {
+            "internalType": "uint256[2][2]",
+            "name": "b",
+            "type": "uint256[2][2]"
+          },
+          {
+            "internalType": "uint256[2]",
+            "name": "c",
+            "type": "uint256[2]"
+          },
+          {
+            "internalType": "uint256[21]",
+            "name": "pubSignals",
+            "type": "uint256[21]"
+          }
+        ],
+        "internalType": "struct IVcAndDiscloseCircuitVerifier.VcAndDiscloseProof",
+        "name": "proof",
+        "type": "tuple"
+      }
+    ],
+    "name": "verifySelfProof",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getVerificationStatus",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "isVerified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "ageVerified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "countryVerified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "ofacVerified",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "verificationTimestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "nationality",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "residenceCountry",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct IdentityVerifier.VerificationStatus",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "isVerificationExpired",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "isVerified",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "ofacCleared",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "timeUntilExpiry",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userAge",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "userVerification",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isVerified",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "ageVerified",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "countryVerified",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "ofacVerified",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "verificationTimestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "nationality",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "residenceCountry",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "validCountry",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verificationExpiryTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "verifiedUsers",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
