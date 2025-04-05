@@ -109,7 +109,7 @@ const NETWORK_CONFIGS = {
   },
 };
 2. Chekck if the user has given you token name, Amount and chainId
-3. Identify the function of the intent (e.g., checking balances or deposit)
+3. Identify the function of the intent (e.g., checking balances or deposit) if the user asks about balance of token or related query the "function" : "balanceof"
 
 Here's my intent: "${intent}"
 
@@ -153,7 +153,7 @@ Return ONLY the JSON with no other text.`,
       let result;
 
       // Check which function to call based on the functionName
-      if (functionName === "deposit") {
+      if (functionName == "deposit") {
         // Convert chainId to a number since it appears your deposit function expects it as a number
         const numericChainId = parseInt(chainId, 10);
 
@@ -174,7 +174,7 @@ Return ONLY the JSON with no other text.`,
             },
           ],
         };
-      } else if (functionName === "withdraw") {
+      } else if (functionName == "withdraw") {
         const numericChainId = parseInt(chainId, 10);
         const withdrawResult = await integration.withdraw({
           chainId: numericChainId,
@@ -191,6 +191,26 @@ Return ONLY the JSON with no other text.`,
               chain,
             },
           ],
+        };
+      } else if (functionName == "balanceof") {
+        const numericChainId = parseInt(chainId, 10);
+        const balanceResult = await integration.getTokenBalance({
+          chainId: numericChainId,
+          token
+        });
+        
+        // Assuming balanceResult is a BigInt or something that needs conversion
+        const formattedBalance = BigInt(balanceResult).toString();
+        
+        result = {
+          success: true,
+          operation: "balanceOf",
+          details: {
+            chain,
+            token,
+            chainId: numericChainId,
+            balance: formattedBalance
+          }
         };
       } else {
         result = {
