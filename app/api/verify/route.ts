@@ -20,11 +20,12 @@ export default async function handler(
       console.log("Proof:", proof);
       console.log("Public signals:", publicSignals);
 
-      const contractAddress = "0xf4bfb24078F21C51B6cF96b8c380091Fd4CA4325";
+      const contractAddress = "0x792620B1F97608c9AE93E0f823F40f47Dd7E20D3";
 
       const address = await getUserIdentifier(publicSignals, "hex");
       console.log("Extracted address from verification result:", address);
 
+      // Connect to Celo network
       const provider = new ethers.providers.JsonRpcProvider(
         "https://celo-alfajores.infura.io/v3/95c5fe3fe1504b01a8a1c9a3c428a49f"
       );

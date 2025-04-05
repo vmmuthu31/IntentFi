@@ -10,7 +10,6 @@ import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import WalletConnect from "@/components/ui/WalletConnect";
 
-// Dynamically import the QR code component with no SSR
 const SelfQRcodeWrapper = dynamic(
   () => import("@selfxyz/qrcode").then((mod) => mod.default),
   { ssr: false }
@@ -21,7 +20,7 @@ export default function VerifyPage() {
   const [verificationStatus, setVerificationStatus] = useState("notStarted");
   const [loading, setLoading] = useState(false);
 
-  const identityVerifierAddress = "0x20b361b25a9874b436F3A5e1D283735ea0c9E888";
+  const identityVerifierAddress = "0x792620B1F97608c9AE93E0f823F40f47Dd7E20D3";
 
   const selfApp = React.useMemo(() => {
     if (!address) return null;
@@ -29,12 +28,11 @@ export default function VerifyPage() {
     return new SelfAppBuilder({
       appName: "IntentFi",
       scope: "5949212",
-      endpoint: "https://8301-111-235-226-130.ngrok-free.app/api/verify",
-      endpointType: "https",
+      endpoint: "https://8301-111-235-226-130.ngrok-free.app/verify",
+      endpointType: "staging_https",
       logoBase64: "https://i.ibb.co/kvX4fyr/Logo-Intent-Fi.png",
       userId: address,
       userIdType: "hex",
-      devMode: true,
       disclosures: {
         minimumAge: 18,
         ofac: false,
