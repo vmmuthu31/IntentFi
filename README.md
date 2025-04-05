@@ -1,90 +1,160 @@
-# DeFi Lending Platform - Functional Flow
+# IntentFi - Express Intent. Lend Smarter. Borrow Better. Earn More.
 
-## Contract Addresses (Celo Alfajores Testnet)
+![cover323](https://github.com/user-attachments/assets/a7184004-77ac-4f29-8419-fc45ce012abc)
 
-| Contract      | Address                                      |
-|---------------|----------------------------------------------|
-| PriceOracle   | 0xec8B24f053f6d20C6B4246069c8254d82C3A4724  |
-| LendingPool   | 0x39fE958FfF831592B7Bd85206cb2773706219e2c  |
-| YieldFarm     | 0x89d62664E1D3E483d62B12286F7e815F40ead075  |
-| DeFiPlatform  | 0x822C01CCaeF0846e25a1C0749fF55757b954D054  |
 
-## Functional Flow Table
+## 🚀 Overview
+Most “AI intent” projects stop at simple swaps or token transfers — acting as surface-level wrappers over existing DeFi tools. **IntentFi goes deeper.** We've built an execution-first, open-intent protocol that automates the most valuable parts of DeFi: **lending, borrowing, and yield strategies** — across chains, without gas, code, or coordination.
 
-| Step | Function | Contract | Description | Parameters | Return Value |
-|------|----------|----------|-------------|------------|--------------|
-| **Token Management** |
-| 1 | `listToken` | LendingPool | Admin adds a new token to the platform | token address, collateralFactor(7500), borrowFactor(8000), liquidationThreshold(8000), liquidationPenalty(1000), reserveFactor(1000) | None |
-| 2 | `getAllSupportedTokens` | LendingPool | Get array of all supported token addresses | None | array of token addresses |
-| 3 | `getTokenConfig` | LendingPool | Get configuration details for a token | token address | struct with token config details |
-| **Lending Operations** |
-| 4 | `approve` | ERC20 Token | User approves tokens for the contract | LendingPool address, amount | boolean |
-| 5 | `deposit` | LendingPool | User deposits tokens into the lending pool | token address, amount | None |
-| 6 | `borrow` | LendingPool | User borrows against their collateral | token address, amount | None |
-| 7 | `repay` | LendingPool | User repays borrowed tokens | token address, amount | None |
-| 8 | `withdraw` | LendingPool | User withdraws deposited tokens | token address, amount | None |
-| 9 | `liquidate` | LendingPool | Liquidator liquidates an underwater position | user address, tokenBorrowed, tokenCollateral, amountToLiquidate | None |
-| 10 | `getUserAccount` | LendingPool | Get user's lending position details | user address, token address | struct with position details |
-| 11 | `getPoolData` | LendingPool | Get pool statistics | token address | struct with APY, utilization rates |
-| **Yield Farming Operations** |
-| 12 | `createPool` | YieldFarm | Admin creates a new yield farming pool | stakingToken, rewardToken, rewardsPerSecond, startTime, endTime | pool ID |
-| 13 | `stake` | YieldFarm | User stakes tokens in a yield farm | pool ID, amount | None |
-| 14 | `unstake` | YieldFarm | User unstakes tokens from a yield farm | pool ID, amount | None |
-| 15 | `claimRewards` | YieldFarm | User claims their farming rewards | pool ID | amount of rewards |
-| 16 | `getPoolInfo` | YieldFarm | Get information about a yield farm | pool ID | struct with pool details |
-| 17 | `getUserStake` | YieldFarm | Get user's staking position | user address, pool ID | struct with stake details |
-| **Strategy Management** |
-| 18 | `createLendingStrategy` | DeFiPlatform | User creates a lending-only strategy | token address, amount | strategy ID |
-| 19 | `createBorrowAndStakeStrategy` | DeFiPlatform | User creates a strategy to borrow one token and stake it | lendToken, borrowToken, lendAmount, borrowAmount, poolId | strategy ID |
-| 20 | `createLendAndStakeStrategy` | DeFiPlatform | User creates a strategy to lend and stake the same token | token, amount, poolId | strategy ID |
-| 21 | `terminateStrategy` | DeFiPlatform | User terminates an active strategy | strategy ID | None |
-| 22 | `getStrategy` | DeFiPlatform | Get details about a specific strategy | user address, strategy ID | struct with strategy details |
-| 23 | `getStrategyCount` | DeFiPlatform | Get count of user's strategies | user address | number of strategies |
-| 24 | `calculateStrategyAPY` | DeFiPlatform | Calculate the APY of a strategy | user address, strategy ID | APY (basis points) |
-| **Price Oracle Operations** |
-| 25 | `setTokenPrice` | PriceOracle | Admin sets the price of a token | token address, price | None |
-| 26 | `getTokenPrice` | PriceOracle | Get current price of a token | token address | price |
+IntentFi transforms natural language into real, executable, cross-chain DeFi strategies. Powered by AI, account abstraction, and a modular strategy engine, users can express intents like _“Lend USDC at best APY”_ or _“Borrow ETH if rates drop”_ — and IntentFi handles bridging, routing, optimizing, and deploying, completely gasless and KYC-compliant.
 
-## User Process Flow
+> We don’t just interpret your intent — we execute it.
 
-1. **Preparation**
-   - Obtain test tokens (USDC, celoETH, etc.) on Celo Alfajores testnet
-   - Approve DeFiPlatform contract to spend tokens: `ERC20.approve(DeFiPlatform.address, amount)`
+---
 
-2. **Simple Lending**
-   - Deposit tokens to earn interest: `LendingPool.deposit(token, amount)` or `DeFiPlatform.createLendingStrategy(token, amount)`
-   - Monitor position: `LendingPool.getUserAccount(userAddress, token)`
-   - Withdraw with interest: `LendingPool.withdraw(token, amount)` or `DeFiPlatform.terminateStrategy(strategyId)`
+## 🎯 Problem
+Despite billions in DeFi TVL, the majority of users are left behind due to:
+- Overwhelming complexity
+- Fragmented protocols and capital
+- Chain-specific UIs and KYC hurdles
+- Gas fees and manual bridging
 
-3. **Borrowing**
-   - Deposit collateral: `LendingPool.deposit(collateralToken, amount)`
-   - Borrow against collateral: `LendingPool.borrow(borrowToken, amount)`
-   - Monitor health factor: `LendingPool.getUserAccount(userAddress, token).healthFactor`
-   - Repay debt: `LendingPool.repay(borrowToken, amount)`
+**Existing intent protocols stop at swaps or simulations.** They lack depth, composability, and true execution.
 
-4. **Yield Farming**
-   - Stake tokens in farm: `YieldFarm.stake(poolId, amount)`
-   - Monitor position: `YieldFarm.getUserStake(userAddress, poolId)`
-   - Claim rewards: `YieldFarm.claimRewards(poolId)`
-   - Unstake tokens: `YieldFarm.unstake(poolId, amount)`
+---
 
-5. **Advanced Strategies**
-   - Borrow and Stake: `DeFiPlatform.createBorrowAndStakeStrategy(lendToken, borrowToken, lendAmount, borrowAmount, poolId)`
-   - Lend and Stake: `DeFiPlatform.createLendAndStakeStrategy(token, amount, poolId)`
-   - Monitor strategy APY: `DeFiPlatform.calculateStrategyAPY(userAddress, strategyId)`
-   - Terminate strategy: `DeFiPlatform.terminateStrategy(strategyId)`
+## 🧠 Solution: Intent-Driven DeFi Automation
+IntentFi allows users to define financial goals in natural language, such as:
+- `"Lend USDC at best yield across chains"`
+- `"Borrow ETH if interest rate is below 3%"`
+- `"Move capital into safer vaults if APY drops"`
 
-6. **Liquidations**
-   - Monitor accounts with health factor < 1: `LendingPool.getUserAccount(userAddress, token).healthFactor`
-   - Liquidate positions: `LendingPool.liquidate(userAddress, tokenBorrowed, tokenCollateral, amountToLiquidate)`
-   - Receive liquidation bonus: Liquidator gets discounted collateral (10% bonus)
+Our AI parses the input and builds an **executable DAG (Directed Acyclic Graph)** of DeFi actions like bridging, staking, borrowing, and exiting. All flows are:
+- ✅ Gasless via Paymaster + Account Abstraction
+- ✅ Compliant via Self Protocol KYC
+- ✅ Routed across chains with Hyperlane & CCTP
 
-## Contract Interaction Flow Diagram
+---
 
-Typical user interactions with the platform:
+## 🔧 How It Works
 
-1. **Simple User** → Approves Tokens → Creates Lending Strategy → Monitors APY → Terminates Strategy
+![image](https://github.com/user-attachments/assets/300b1518-1211-43b6-851b-068f6888634a)
 
-2. **Advanced User** → Approves Tokens → Deposits Collateral → Borrows Against Collateral → Stakes Borrowed Tokens → Claims Farming Rewards → Repays Loan → Withdraws Collateral
+1. **User Input:** `"Lend USDC at best APY, borrow ETH if rates drop"`
+2. **AI Parsing:** Natural language is parsed into a DAG of intent blocks
+3. **Strategy Builder:** Flow created with yield/borrow/exit conditions
+4. **Execution:** Gasless, cross-chain bridging + protocol interaction
+5. **Monitoring:** Auto-yield rebalancing + risk triggers activated
 
-3. **Platform Admin** → Lists New Tokens → Sets Token Prices → Creates Yield Farming Pools → Monitors Platform Metrics
+---
+
+## 🔐 Core Features
+
+- **Lending, Borrowing & Yielding via Intent**  
+  Users can execute full-stack DeFi strategies by simply stating their goals in plain English. Whether it’s lending USDC, borrowing against BTC, or compounding yields — IntentFi handles it all automatically across chains.
+
+- **Visual No-Code Builder**  
+  A drag-and-drop UI allows users to design, preview, and customize DeFi strategies without writing a single line of code. This opens up powerful financial tools to non-technical users and institutions alike.
+
+- **Live Strategy Optimization**  
+  IntentFi constantly monitors APY, gas prices, and risk factors. It automatically rebalances, exits, or reroutes strategies based on real-time data — ensuring users always get optimal results.
+
+- **One-Time KYC for All Chains**  
+  Integrated with Self Protocol, IntentFi enables a single KYC verification that unlocks usage across all supported chains and strategies — ensuring regulatory readiness without repeated friction.
+
+- **Cross-Chain Routing & Fallbacks**  
+  Powered by Hyperlane and Circle CCTP, IntentFi bridges, swaps, and deploys capital across multiple chains. With built-in fallback logic, strategies remain robust even if one chain or protocol fails.
+
+
+---
+
+## 🌍 Use Cases
+
+| Persona            | Intent Example                                  |
+|--------------------|--------------------------------------------------|
+| DeFi Explorer      | `Lend my USDC for highest APY across chains`     |
+| Investor           | `Buy ETH every Friday if RSI < 40`               |
+| Portfolio Manager  | `Rebalance to 60/40 stable/degen`                |
+| DAO Treasury       | `Deploy idle funds with risk score < 3`          |
+
+---
+
+## 🧩 What Sets Us Apart
+
+- **IntentFi goes beyond swaps — it unlocks DeFi’s real power**  
+  Most “intent” platforms stop at simple token movements. We go deep — enabling users to lend, borrow, and compound yields across chains with just one sentence.
+
+- **AI that actually executes, not just simulates**  
+  Our LLM-powered engine turns natural language into live, executable DAGs (Directed Acyclic Graphs) — orchestrating real DeFi actions like bridging, lending, vaulting, exiting, and more.
+
+- **Self-healing, risk-aware strategy automation**  
+  Strategies don’t just run — they adapt. IntentFi constantly re-optimizes based on APY shifts, gas spikes, protocol risks, and user-defined triggers. It’s autopilot with an IQ.
+
+- **Fully gasless, fully compliant — out of the box**  
+  Every action is abstracted behind account abstraction and Paymaster tech. One-time KYC via Self Protocol ensures users can launch compliant strategies globally, without breaking flow.
+
+- **Open-ended, not pre-packaged**  
+  Forget rigid templates. Users define *what* they want — the system figures out *how*. That means infinite, composable intents instead of locked recipes.
+
+
+---
+
+## 🤝 Bounty Integrations
+
+### 🌱 Saga
+- **Why:** Modular chains with native intent support
+- **How We Used It:**
+  - Created a dedicated Saga chain to run execution logic and strategy DAG computation in a scalable, low-latency environment.
+  - Integrated with Saga's interchain messaging to offload intensive computation from L1.
+- **Impact:** Faster strategy execution and gasless coordination.
+
+### ₿ Rootstock (RSK)
+- **Why:** Native Bitcoin-based DeFi
+- **How We Used It:**
+  - Enabled BTC-backed borrowing and lending using RSK's ecosystem.
+  - IntentFi automatically bridges assets to Rootstock and interacts with lending protocols.
+- **Impact:** First BTC-native intent automation in DeFi.
+
+### 🌍 Celo
+- **Why:** Mobile-first, low-fee, eco-friendly DeFi
+- **How We Used It:**
+  - Deployed auto-yield strategies for Celo-based stablecoins.
+  - Integrated Paymaster on Celo for full gasless UX.
+- **Impact:** Mobile users can now launch DeFi strategies using only natural language — no wallet switching.
+
+---
+
+## 🔮 Vision
+IntentFi aims to become the operating system for intent-driven finance — where users don’t manage DeFi manually, but define what they want and let the system execute it across chains, protocols, and risk layers.
+
+We're building DeFi for the next billion users — by making it invisible.
+
+---
+
+## 🛠 Tech Stack
+
+### ✅ Core Layers
+- **Intent Parsing:** LLM-powered agent
+- **Automation:** Auto-yield monitoring, rebalancing, exit triggers
+- **Gasless UX:** Zircuit AA + Circle Paymaster
+- **Compliance:** Self Protocol + HashKey Chain
+- **Cross-Chain Infra:** Hyperlane (Open Intents), Circle CCTP
+- **Frontend:** Next.js + Tailwind
+- **Backend:** Node.js + Firebase
+
+---
+
+## 🙌 Contributors
+- Frontend Engineering: Vairamuthu
+- Solidity Dev - Thirumurugan
+- Design, and Research - Prashant  
+- Integragtion Dev - Deepak
+- Partner Protocols: Saga, Rootstock, Celo, Hyperlane, Self Protocol, Zircuit, Circle
+
+---
+
+## 📬 Contact
+For demos, integration requests, or questions:  
+- **Website:** https://intentfi.vercel.app\
+- Built in EthTaipei <3
+

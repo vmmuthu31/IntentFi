@@ -66,7 +66,7 @@ async function processWithClaude(
 The JSON should have this format:
 {
   "steps": [
-    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters"},
+    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 'N/A'"},
   ],
 }
 
@@ -104,22 +104,44 @@ const NETWORK_CONFIGS = {
     contractAddresses: {
       PriceOracle: "0x308b659C3B437cFB4F54573E9C3C03acEb8B5205",
       LendingPool: "0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D",
-      YieldFarm: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
+      YieldFarming: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
       DeFIPlatform: "0x649f3f2F4aB598272f2796401968ed74CBeA948c",
       Token: {
         USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
         CELO: "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5",
+        USDT: "0x50ef9155718e4b69972ebd7feb7d6d554169e6d2",
+      },
+    },
+  },
+  sagaIFI: {
+    chainId: 2743859179913000,
+    chain: sagaIFI,
+    name: "sagaIFI",
+    network: "sagaIFI",
+    rpcUrl: "https://intentfi-2743859179913000-1.jsonrpc.sagarpc.io",
+    contractAddresses: {
+      PriceOracle: "0x60b588582b8308b9b41966fBd38821F31AA06537",
+      LendingPool: "0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee",
+      YieldFarming: "0x653c13Fb7C1E5d855448af2A385F2D97a623384E",
+      DeFIPlatform: "0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1",
+      Token: {
+        IFI: "0x14b1c5415C1164fB09450c9e46a00D5C39e52644",
+        USDT: "0xE6e05E7DDB1d3248a367BDec413D6ea829bac587",
+        USDC: "0x7aDC738bAB6e32452D3065De9A1e77d755b50791",
       },
     },
   },
 };
-2. Chekck if the user has given you token name, Amount and chainId
-3. Identify the function of the intent by looking for specific keywords:
+2. check if the chainId is valid and the user given and the NETWORK_CONFIGS should be same the user current chainId: "${chainId}"
+3. Chekck if the user has given you token name, Amount and chainId
+4. Identify the function of the intent by looking for specific keywords:
    - For balance checks: Use function "balanceof" if the intent contains words like "balance", "how much", "check my", "how many", "see my", "view my"
    - For deposits: Use function "deposit" if the intent contains words like "deposit", "add", "put in", "transfer to", "send to", "invest"
    - For withdrawals: Use function "withdraw" if the intent contains words like "withdraw", "take out", "remove", "get back", "pull out", "transfer from"
    - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
    - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
+   - For getting pool information: Use function "getPoolInformation" if the intent contains words like "get pools", "pool information", "pool details", "pool data", or "get liquidity".
+   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to"
 Here's my intent: "${intent}"
 
 Return ONLY the JSON with no other text.`,
@@ -151,6 +173,7 @@ Return ONLY the JSON with no other text.`,
       const chainId = step.chainId; // This is a string from Claude's response
       const amount = step.amount;
       const functionName = step.function;
+      const poolId = step.poolId;
 
       console.log("Parsed step:", step);
       console.log("Parsed chain:", chain);
@@ -158,7 +181,7 @@ Return ONLY the JSON with no other text.`,
       console.log("Parsed chainId:", chainId);
       console.log("Parsed amount:", amount);
       console.log("Parsed functionName:", functionName);
-
+      console.log("Parsed poolId:", poolId);
       let result;
 
       // Check which function to call based on the functionName
@@ -262,16 +285,49 @@ Return ONLY the JSON with no other text.`,
             },
           ],
         };
-      } else {
+      } else if (functionName == "stake") {
+        const numericChainId = parseInt(chainId, 10);
+        const stakeResult = await integration.stake({
+          chainId: numericChainId,
+          poolId,
+          amount,
+        });
+      
         result = {
           steps: [
             {
-              description: `Unknown operation: ${functionName} with ${amount} ${token} on ${chain}`,
+              description: `Staked ${amount} into pool ${poolId} on ${chain}. Transaction ${
+                stakeResult.success ? "succeeded" : "failed"
+              }: ${stakeResult.transactionHash}`,
               chain,
             },
           ],
         };
-      }
+      } else if (functionName == "getpoolinformation") {
+        const numericChainId = parseInt(chainId, 10);
+        const pools = await integration.getPoolInformation({
+          chainId: numericChainId,
+        });
+      
+        result = {
+          steps: [
+            {
+              description: `Retrieved information for ${pools.length} pools on ${chain}.`,
+              chain,
+            },
+          ],
+          data: pools
+        };
+      } else {
+          result = {
+            steps: [
+              {
+                description: `Unknown operation: ${functionName} with ${amount} ${token} on ${chain}`,
+                chain,
+              },
+            ],
+          };
+        }
 
       return result as IntentExecutionPlan;
     } catch (parseError) {
