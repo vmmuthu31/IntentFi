@@ -74,101 +74,101 @@ export default function IntentPage() {
     try {
       const lowerIntent = intent.toLowerCase().trim();
 
-      if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
-        setIntentResult({
-          steps: [
-            {
-              description:
-                "Hello! I'm your financial assistant. How can I help with your investments today?",
-              chain: "N/A",
-            },
-          ],
-        });
-        toast.success("Greeting acknowledged");
-        setIsProcessing(false);
-        return;
-      }
+      // if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
+      //   setIntentResult({
+      //     steps: [
+      //       {
+      //         description:
+      //           "Hello! I'm your financial assistant. How can I help with your investments today?",
+      //         chain: "N/A",
+      //       },
+      //     ],
+      //   });
+      //   toast.success("Greeting acknowledged");
+      //   setIsProcessing(false);
+      //   return;
+      // }
 
-      const financialKeywords = [
-        "invest",
-        "yield",
-        "earn",
-        "stake",
-        "swap",
-        "trade",
-        "buy",
-        "sell",
-        "token",
-        "coin",
-        "crypto",
-        "nft",
-        "defi",
-        "eth",
-        "btc",
-        "bitcoin",
-        "ethereum",
-        "usdc",
-        "usdt",
-        "dai",
-        "portfolio",
-        "asset",
-        "balance",
-        "wallet",
-        "chain",
-        "blockchain",
-        "bridge",
-        "transfer",
-        "liquidity",
-        "pool",
-        "apy",
-        "interest",
-        "loan",
-        "borrow",
-        "lend",
-        "collateral",
-        "leverage",
-        "position",
-        "protocol",
-        "smart contract",
-        "rebalance",
-        "diversify",
-        "risk",
-        "profit",
-        "loss",
-        "dollar",
-        "$",
-        "percentage",
-        "%",
-        "price",
-        "value",
-      ];
+      // const financialKeywords = [
+      //   "invest",
+      //   "yield",
+      //   "earn",
+      //   "stake",
+      //   "swap",
+      //   "trade",
+      //   "buy",
+      //   "sell",
+      //   "token",
+      //   "coin",
+      //   "crypto",
+      //   "nft",
+      //   "defi",
+      //   "eth",
+      //   "btc",
+      //   "bitcoin",
+      //   "ethereum",
+      //   "usdc",
+      //   "usdt",
+      //   "dai",
+      //   "portfolio",
+      //   "asset",
+      //   "balance",
+      //   "wallet",
+      //   "chain",
+      //   "blockchain",
+      //   "bridge",
+      //   "transfer",
+      //   "liquidity",
+      //   "pool",
+      //   "apy",
+      //   "interest",
+      //   "loan",
+      //   "borrow",
+      //   "lend",
+      //   "collateral",
+      //   "leverage",
+      //   "position",
+      //   "protocol",
+      //   "smart contract",
+      //   "rebalance",
+      //   "diversify",
+      //   "risk",
+      //   "profit",
+      //   "loss",
+      //   "dollar",
+      //   "$",
+      //   "percentage",
+      //   "%",
+      //   "price",
+      //   "value",
+      // ];
 
-      const isQuestionPattern =
-        /^(who|what|when|where|why|how|is|are|can|could|do|does|which|whose)\s/i.test(
-          lowerIntent
-        );
+      // const isQuestionPattern =
+      //   /^(who|what|when|where|why|how|is|are|can|could|do|does|which|whose)\s/i.test(
+      //     lowerIntent
+      //   );
 
-      const containsFinancialKeyword = financialKeywords.some((keyword) =>
-        lowerIntent.includes(keyword)
-      );
+      // const containsFinancialKeyword = financialKeywords.some((keyword) =>
+      //   lowerIntent.includes(keyword)
+      // );
 
-      if (
-        (isQuestionPattern && !containsFinancialKeyword) ||
-        (!containsFinancialKeyword && lowerIntent.length < 15)
-      ) {
-        setIntentResult({
-          steps: [
-            {
-              description:
-                "I'm specialized in financial intents and DeFi operations. Please provide a finance-related request like 'Earn yield on USDC' or 'Invest in ETH weekly'.",
-              chain: "N/A",
-            },
-          ],
-        });
-        toast.info("Please provide a financial intent");
-        setIsProcessing(false);
-        return;
-      }
+      // if (
+      //   (isQuestionPattern && !containsFinancialKeyword) ||
+      //   (!containsFinancialKeyword && lowerIntent.length < 15)
+      // ) {
+      //   setIntentResult({
+      //     steps: [
+      //       {
+      //         description:
+      //           "I'm specialized in financial intents and DeFi operations. Please provide a finance-related request like 'Earn yield on USDC' or 'Invest in ETH weekly'.",
+      //         chain: "N/A",
+      //       },
+      //     ],
+      //   });
+      //   toast.info("Please provide a financial intent");
+      //   setIsProcessing(false);
+      //   return;
+      // }
 
       const response = await fetch("/api/intent/process", {
         method: "POST",
@@ -179,6 +179,8 @@ export default function IntentPage() {
       });
 
       const data = await response.json();
+
+      console.log("data", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to process intent");
@@ -266,6 +268,12 @@ export default function IntentPage() {
     }
   };
 
+  const handleClear = () => {
+    setIntent("");
+    setIntentResult(null);
+    setExecutionStatus([]);
+  };
+
   return (
     <main className="flex min-h-screen flex-col bg-black">
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
@@ -341,15 +349,28 @@ export default function IntentPage() {
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                            Steps:
-                          </h4>
+                
                           <ol className="list-decimal pl-5 space-y-1">
                             {intentResult.steps.map((step, i) => (
                               <li key={i} className="text-sm">
-                                {step.description}{" "}
+                                {step.description.includes("Transaction succeeded:") ? (
+                                  <>
+                                    {step.description.split("Transaction succeeded:")[0]}
+                                    Transaction succeeded:{" "}
+                                    <a 
+                                      href={`https://alfajores.celoscan.io/tx/${step.description.split("Transaction succeeded:")[1].trim().split(" ")[0]}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-500 hover:underline"
+                                    >
+                                      {step.description.split("Transaction succeeded:")[1].trim().split(" ")[0]}
+                                    </a>
+                                  </>
+                                ) : (
+                                  step.description
+                                )}{" "}
                                 <span className="text-xs text-muted-foreground">
-                                  ({step.chain})
+                                 ({step.chain})
                                 </span>
                                 {executionStatus.length > 0 && (
                                   <span className="ml-2">
@@ -394,15 +415,17 @@ export default function IntentPage() {
                               ✅ Execution Complete
                             </Button>
                           ) : (
-                            <Button
-                              onClick={executeIntent}
-                              disabled={!isConnected}
-                              className="bg-gradient-to-r from-purple-600 to-blue-500 text-white"
-                            >
-                              {!isConnected
-                                ? "Connect Wallet to Execute"
-                                : "Execute This Intent"}
-                            </Button>
+                            <>
+                            </>
+                            // <Button
+                            //   onClick={executeIntent}
+                            //   disabled={!isConnected}
+                            //   className="bg-gradient-to-r from-purple-600 to-blue-500 text-white"
+                            // >
+                            //   {!isConnected
+                            //     ? "Connect Wallet to Execute"
+                            //     : "Execute This Intent"}
+                            // </Button>
                           )}
                         </div>
                       </div>
@@ -411,21 +434,24 @@ export default function IntentPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setIntent("")}>
+                <Button variant="outline" onClick={handleClear}>
                   Clear
                 </Button>
                 {/* if no wallet connected then dontallow to process intent   */}
-                {!isConnected ? (
-                  <Button variant="outline" disabled>
-                    Connect Wallet to Process Intent
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleProcessIntent}
-                    disabled={isProcessing || !intent}
-                  >
-                    {isProcessing ? "Processing..." : "Process Intent"}
-                  </Button>
+                {!intentResult && (
+                  !isConnected ? (
+                    <Button variant="outline" disabled>
+                      Connect Wallet to Process Intent
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleProcessIntent}
+                      className="bg-gradient-to-r from-purple-600 to-blue-500 text-white"
+                      disabled={isProcessing || !intent}
+                    >
+                      {isProcessing ? "Processing..." : "Process Intent"}
+                    </Button>
+                  )
                 )}
               </CardFooter>
             </Card>
