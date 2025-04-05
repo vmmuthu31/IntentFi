@@ -22,7 +22,10 @@ export default function Home() {
             {/* Left column - Text content */}
             <div className="w-full md:w-7/12 lg:w-7/12">
               <h1 className="text-7xl md:text-8xl font-light tracking-tight">
-                <GlitchText text="Turn simple words" className="hover:cursor-pointer" />
+                <GlitchText
+                  text="Turn simple words"
+                  className="hover:cursor-pointer"
+                />
                 <br />
                 <GlitchText text="into" className="hover:cursor-pointer" />{" "}
                 <span
@@ -83,7 +86,10 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="Your intent" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="Your intent"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -123,7 +129,10 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="Our AI engine" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="Our AI engine"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -162,7 +171,10 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="It runs, adapts &amp; grows" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="It runs, adapts &amp; grows"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -222,7 +234,10 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-              <GlitchText text="Intent-to-Action AI Engine" className="text-orange-500 hover:cursor-pointer" />
+                <GlitchText
+                  text="Intent-to-Action AI Engine"
+                  className="text-orange-500 hover:cursor-pointer"
+                />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -250,7 +265,10 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-              <GlitchText text="Built-in Yielding, Lending & Borrowing" className="text-orange-500 hover:cursor-pointer" />
+                <GlitchText
+                  text="Built-in Yielding, Lending & Borrowing"
+                  className="text-orange-500 hover:cursor-pointer"
+                />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -288,7 +306,10 @@ export default function Home() {
                   className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                   style={{ fontFamily: "InstrumentSerif" }}
                 >
-              <GlitchText text="Gasless, Compliant, and Cross-Chain" className="text-orange-500 hover:cursor-pointer" />
+                  <GlitchText
+                    text="Gasless, Compliant, and Cross-Chain"
+                    className="text-orange-500 hover:cursor-pointer"
+                  />
                 </div>
                 <div className="text-gray-400 mb-4 text-base">
                   No wallet switching. No bridging. No repeated KYC prompts.
@@ -321,7 +342,10 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-              <GlitchText text="Always-On Optimization" className="text-orange-500 hover:cursor-pointer" />
+                <GlitchText
+                  text="Always-On Optimization"
+                  className="text-orange-500 hover:cursor-pointer"
+                />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -351,7 +375,10 @@ export default function Home() {
                   className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                   style={{ fontFamily: "InstrumentSerif" }}
                 >
-              <GlitchText text="One-Time KYC. Full Compliance." className="text-orange-500 hover:cursor-pointer" />
+                  <GlitchText
+                    text="One-Time KYC. Full Compliance."
+                    className="text-orange-500 hover:cursor-pointer"
+                  />
                 </h3>
 
                 <p className="text-gray-400 mb-4 text-lg">
@@ -402,14 +429,20 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="01." className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="01."
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="DeFi Explorer" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="DeFi Explorer"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h3>
 
             <ul className="text-white text-lg list-none">
@@ -436,20 +469,26 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="02." className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="02."
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="Investor" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="Investor"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h3>
 
             <ul className="text-white text-lg list-none">
               <li className="">
                 <span className="text-xl">→</span>
-                “Buy $100 ETH every Friday if RSI &lt; 40”  
+                “Buy $100 ETH every Friday if RSI &lt; 40”
               </li>
               <li className="">
                 <span className="text-xl">→</span>
@@ -472,14 +511,20 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="03." className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="03."
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="Portfolio Manager" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="Portfolio Manager"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h3>
 
             <ul className="text-white text-lg list-none">
@@ -506,14 +551,20 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="04." className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="04."
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              <GlitchText text="DAO Treasury Lead" className="text-orange-500 hover:cursor-pointer" />
+              <GlitchText
+                text="DAO Treasury Lead"
+                className="text-orange-500 hover:cursor-pointer"
+              />
             </h3>
 
             <ul className="text-white text-lg list-none">
@@ -540,7 +591,7 @@ export default function Home() {
 
       <div className="border-b border-gray-800 mt-20"></div>
 
-      <footer className="mb-10 rounded-b-2xl bg-background">
+      <footer className="mb-10 rounded-b-2xl bg-black">
         <div className="flex flex-col md:flex-row gap-8 justify-around text-white pt-12 px-4">
           <div className="flex-1">
             <Image
@@ -553,12 +604,14 @@ export default function Home() {
           </div>
           <div className="flex-1">
             <div
-              style={{ fontFamily: 'InstrumentSerif' }}
+              style={{ fontFamily: "InstrumentSerif" }}
               className="text-center md:text-9xl text-4xl italic"
             >
               IntentFi
             </div>
-            <p className="text-xl text-center md:pl-12 pl-4">Your strategy starts with a sentence.</p>
+            <p className="text-xl text-center md:pl-12 pl-4">
+              Your strategy starts with a sentence.
+            </p>
 
             <div className="flex justify-center mt-8 space-x-8 md:space-x-16">
               <div className="flex flex-col space-y-4 text-center md:text-right">
@@ -568,16 +621,16 @@ export default function Home() {
               </div>
               <div className="flex flex-col space-y-4 text-center md:text-right">
                 <div>NAVIGATION</div>
-                <Link href={'/intent'} className="hover:cursor-pointer">
+                <Link href={"/intent"} className="hover:cursor-pointer">
                   Intent
                 </Link>
-                <Link href={'/identity'} className="hover:cursor-pointer">
+                <Link href={"/identity"} className="hover:cursor-pointer">
                   Identity
                 </Link>
-                <Link href={'/analytics'} className="hover:cursor-pointer">
+                <Link href={"/analytics"} className="hover:cursor-pointer">
                   Analytics
                 </Link>
-                <Link href={'/dashboard'} className="hover:cursor-pointer">
+                <Link href={"/dashboard"} className="hover:cursor-pointer">
                   Dashboard
                 </Link>
               </div>
@@ -589,7 +642,9 @@ export default function Home() {
           <div className="hover:cursor-pointer">Privacy Policy</div>
           <div className="hover:cursor-pointer">Terms of Service</div>
           <div className="hover:cursor-pointer">Risk Disclaimer</div>
-          <div className="hover:cursor-pointer">©2025 INTENTFI™ // ALL RIGHTS RESERVED</div>
+          <div className="hover:cursor-pointer">
+            ©2025 INTENTFI™ // ALL RIGHTS RESERVED
+          </div>
         </div>
       </footer>
     </div>
