@@ -164,5 +164,36 @@
 }
 
 .custom-gradient {
-  background: linear-gradient(to right, #5a2411, #FA4C15 30%, #FA4C15 60%, #5a2411);
+  background:
+    /* Vertical with subtle blend */
+    linear-gradient(to bottom, 
+      transparent 0%, 
+      transparent 4%,  /* Start transition slightly earlier */
+      rgba(0, 0, 0, 0.2) 8%,  /* Very slight black */
+      black 12%,  /* Full black shortly after */
+      black 100%
+    ),
+    /* Horizontal gradient */
+    linear-gradient(to right, 
+      #5a2411, 
+      #FA4C15 30%, 
+      #FA4C15 60%, 
+      #5a2411
+    );
+  background-size: 100% 100%;
+  min-height: 100vh;
+}
+
+@font-face {
+  font-family: 'InstrumentSerif';
+  src: url('/fonts/Instrument_Serif/InstrumentSerif-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'InstrumentSerif';
+  src: url('/fonts/Instrument_Serif/InstrumentSerif-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
 }
