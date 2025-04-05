@@ -1,28 +1,12 @@
 import { NextResponse } from "next/server";
 import { approve } from "@/lib/services/integration";
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { contractAddress, spenderAddress, allowanceAmount } = body;
+    const { chainId } = body;
 
-    if (!contractAddress || !spenderAddress || !allowanceAmount) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Missing required parameters",
-        },
-        { status: 400 }
-      );
-    }
     try {
-      const result = await approve({
-        body: {
-          contractAddress,
-          spenderAddress,
-          allowanceAmount,
-        },
-      });
+      const result = await approve({ chainId });
 
       return NextResponse.json({
         success: true,

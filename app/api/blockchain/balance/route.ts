@@ -8,13 +8,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const token = searchParams.get("token");
     const chainIdParam = searchParams.get("chainId");
-    const contractAddress = searchParams.get("contractAddress");
-    if (!token || !chainIdParam || !contractAddress) {
+
+    if (!token || !chainIdParam) {
       return NextResponse.json(
-        {
-          error:
-            "token, chainId and contractAddress are required query parameters",
-        },
+        { error: "token and chainId are required query parameters" },
         { status: 400 }
       );
     }
@@ -28,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const price = await getTokenPrice(token, chainId, contractAddress);
+    const price = await getTokenPrice(token, chainId);
 
     return NextResponse.json({
       success: true,
