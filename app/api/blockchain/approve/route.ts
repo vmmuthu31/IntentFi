@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import {
-  approve,
-  listSmartAccounts,
-  deploySmartAccount,
-} from "@/lib/services/blockchain-service";
+    approve,
+} from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
@@ -20,24 +18,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get deploy flag from URL
-    const url = new URL(request.url);
-    const forceDeployment = url.searchParams.get("deploy") === "true";
 
-    // Force deployment if requested
-    if (forceDeployment) {
-      console.log("Forcing smart account deployment before approve...");
-      const deployed = await deploySmartAccount();
-      if (!deployed) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Failed to deploy smart account before approval",
-          },
-          { status: 500 }
-        );
-      }
-    }
+
 
     // Attempt to approve with detailed error handling
     try {
