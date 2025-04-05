@@ -28,7 +28,7 @@ export default function VerifyPage() {
     return new SelfAppBuilder({
       appName: "IntentFi",
       scope: "5949212",
-      endpoint: "https://2270-111-235-226-130.ngrok-free.app/api/verify",
+      endpoint: "https://intentfi.vercel.app/api/verify",
       endpointType: "staging_https",
       logoBase64: "https://i.ibb.co/kvX4fyr/Logo-Intent-Fi.png",
       userId: address,
@@ -586,9 +586,9 @@ export default function VerifyPage() {
                   </div>
 
                   <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                    <Link href="/lending" className="flex-1">
+                    <Link href="/intent" className="flex-1">
                       <Button className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 py-6 text-lg">
-                        Go to Lending Platform
+                        Go to IntentFi
                       </Button>
                     </Link>
 
