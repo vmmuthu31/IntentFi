@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getAllowance } from "@/lib/services/blockchain-service";
+import { checkAllowance } from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { contractAddress, ownerAddress, spenderAddress } = body;
+    const { chainId } = body;
 
-    if (!contractAddress || !ownerAddress || !spenderAddress) {
+    if (!chainId) {
       return NextResponse.json(
         {
           success: false,
@@ -16,20 +16,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await getAllowance({
-      body: { contractAddress, ownerAddress, spenderAddress },
+    const result = await checkAllowance({
+      chainId,
     });
 
     return NextResponse.json({
       success: true,
-      allowance: result.allowance,
+      allowance: result,
     });
   } catch (error) {
-    console.error("Error in getAllowance:", error);
+    console.error("Error in checkAllowance:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to get allowance",
+        message: "Failed to check allowance",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
