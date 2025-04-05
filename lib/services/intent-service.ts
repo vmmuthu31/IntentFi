@@ -142,7 +142,7 @@ const NETWORK_CONFIGS = {
    - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
    - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
    - For getting pool information: Use function "getPoolInformation" if the intent contains words like "get pools", "pool information", "pool details", "pool data", or "get liquidity".
-   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to"
+   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to", "yield"
    - For unstaking: Use function "unstake" if the intent contains words like "unstake", "stake withdraw", "remove from stake", "take out of stake"
 Here's my intent: "${intent}"
 
