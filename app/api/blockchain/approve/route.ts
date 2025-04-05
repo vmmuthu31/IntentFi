@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { approve } from "@/lib/services/integration";
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
+    const { chainId } = body;
+
     try {
-      const result = await approve();
+      const result = await approve({ chainId });
 
       return NextResponse.json({
         success: true,
