@@ -55,6 +55,7 @@ function WalletConnect() {
                 <div style={{ display: "flex", gap: 12 }}>
                   <button
                     onClick={openChainModal}
+                    className="text-white"
                     style={{ display: "flex", alignItems: "center" }}
                     type="button"
                   >
@@ -81,7 +82,11 @@ function WalletConnect() {
                     {chain.name}
                   </button>
 
-                  <button onClick={openAccountModal} type="button">
+                  <button
+                    onClick={openAccountModal}
+                    className=" text-white"
+                    type="button"
+                  >
                     {account.displayName}
                     {account.displayBalance
                       ? ` (${account.displayBalance})`

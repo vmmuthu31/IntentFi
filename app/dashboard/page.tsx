@@ -19,6 +19,7 @@ export const metadata = {
 
 export default function DashboardPage() {
   return (
+    <div className="bg-background">
     <DashboardShell>
       <DashboardHeader
         heading="Portfolio Dashboard"
@@ -185,5 +186,6 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
     </DashboardShell>
+    </div>
   );
 }

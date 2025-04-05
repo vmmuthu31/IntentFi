@@ -267,7 +267,7 @@ export default function IntentPage() {
   };
 
   return (
-    <main className="flex min-h-screen bg-black flex-col">
+    <main className="flex min-h-screen flex-col bg-background">
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
         <h1 className="text-3xl text-white font-bold mb-6">
           Create New Intent
