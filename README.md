@@ -1,6 +1,6 @@
-# 📘 IntentFi - Express Intent. Lend Smarter. Borrow Better. Earn More.
+# IntentFi - Express Intent. Lend Smarter. Borrow Better. Earn More.
 
-![cover323](https://github.com/user-attachments/assets/bc11667b-1080-46a6-94a8-1a6b730761f0)
+![cover323](https://github.com/user-attachments/assets/a7184004-77ac-4f29-8419-fc45ce012abc)
 
 
 ## 🚀 Overview
