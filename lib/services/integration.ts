@@ -21,6 +21,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celoAlfajores, rootstockTestnet } from "viem/chains";
+import { sagaIFI } from "../provider/walletProvider";
 
 type TransactionRequest = {
   account: Account;
@@ -73,6 +74,24 @@ const NETWORK_CONFIGS = {
         USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
         CELO: "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5",
         USDT: "0x50ef9155718e4b69972ebd7feb7d6d554169e6d2",
+      },
+    },
+  },
+  sagaIFI: {
+    chainId: 2743859179913000,
+    chain: sagaIFI,
+    name: "sagaIFI",
+    network: "sagaIFI",
+    rpcUrl: "https://intentfi-2743859179913000-1.jsonrpc.sagarpc.io",
+    contractAddresses: {
+      PriceOracle: "0x60b588582b8308b9b41966fBd38821F31AA06537",
+      LendingPool: "0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee",
+      YieldFarming: "0x653c13Fb7C1E5d855448af2A385F2D97a623384E",
+      DeFIPlatform: "0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1",
+      Token: {
+        IFI: "0x14b1c5415C1164fB09450c9e46a00D5C39e52644",
+        USDT: "0xE6e05E7DDB1d3248a367BDec413D6ea829bac587",
+        USDC: "0x7aDC738bAB6e32452D3065De9A1e77d755b50791",
       },
     },
   },
