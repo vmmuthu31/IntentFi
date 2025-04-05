@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      balance: BigInt(balance as bigint).toString(),
+      balance: balance.toString(),
     });
   } catch (error) {
     console.error("Error getting token balance:", error);
