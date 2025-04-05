@@ -1507,13 +1507,832 @@ const getPoolInformation = async ({ chainId }: { chainId: number }) => {
     functionName: "poolLength",
   });
   console.log(`Total number of pools: ${poolLength}`);
-  for (let i = 0; i < Number(poolLength) - 1; i++) {
-    const poolInfo = await publicClient.readContract({
+  const pools = [];
+
+  // Define a type for the raw pool data to avoid using 'any'
+  type RawPoolInfo = [
+    string, // stakingToken
+    string, // rewardToken
+    bigint, // rewardPerSecond
+    bigint, // lastUpdateTime
+    bigint, // accRewardPerShare
+    bigint, // totalStaked
+    bigint, // startTime
+    bigint, // endTime
+    boolean // isActive
+  ];
+
+  for (let i = 0; i < Number(poolLength); i++) {
+    try {
+      const poolInfo = (await publicClient.readContract({
+        address: contractAddress.YieldFarming as `0x${string}`,
+        abi: yieldFarmingABI,
+        functionName: "pools",
+        args: [BigInt(i)],
+      })) as RawPoolInfo;
+
+      // Format the pool information with proper field names and readable values
+      const formattedPoolInfo = {
+        poolId: i,
+        stakingToken: poolInfo[0],
+        rewardToken: poolInfo[1],
+        rewardPerSecond: {
+          raw: poolInfo[2].toString(),
+          formatted: formatUnits(poolInfo[2].toString(), 18),
+        },
+        lastUpdateTime: {
+          timestamp: poolInfo[3].toString(),
+          date: new Date(Number(poolInfo[3]) * 1000).toLocaleString(),
+        },
+        accRewardPerShare: {
+          raw: poolInfo[4].toString(),
+          formatted: formatUnits(poolInfo[4].toString(), 18),
+        },
+        totalStaked: {
+          raw: poolInfo[5].toString(),
+          formatted: formatUnits(poolInfo[5].toString(), 18),
+        },
+        startTime: {
+          timestamp: poolInfo[6].toString(),
+          date: new Date(Number(poolInfo[6]) * 1000).toLocaleString(),
+        },
+        endTime: {
+          timestamp: poolInfo[7].toString(),
+          date: new Date(Number(poolInfo[7]) * 1000).toLocaleString(),
+        },
+        isActive: poolInfo[8],
+      };
+
+      console.log(`Pool ${i} information:`, formattedPoolInfo);
+      pools.push(formattedPoolInfo);
+    } catch (error) {
+      console.error(`Error fetching pool ${i}:`, error);
+    }
+  }
+  return pools;
+};
+
+const stake = async ({
+  chainId,
+  poolId,
+  amount,
+}: {
+  chainId: number;
+  poolId: number;
+  amount: string;
+}) => {
+  try {
+    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+    const chain = networkConfig.chain;
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error("Private key not found");
+    }
+    const contractAddress = networkConfig.contractAddresses;
+
+    // Get pool info to validate staking
+    type RawPoolInfo = [
+      string, // stakingToken
+      string, // rewardToken
+      bigint, // rewardPerSecond
+      bigint, // lastUpdateTime
+      bigint, // accRewardPerShare
+      bigint, // totalStaked
+      bigint, // startTime
+      bigint, // endTime
+      boolean // isActive
+    ];
+
+    const poolInfo = (await publicClient.readContract({
       address: contractAddress.YieldFarming as `0x${string}`,
       abi: yieldFarmingABI,
-      functionName: "getPoolInfo",
+      functionName: "pools",
+      args: [BigInt(poolId)],
+    })) as RawPoolInfo;
+
+    if (!poolInfo) {
+      throw new Error("Pool not found");
+    }
+
+    // Check if pool is active
+    const isActive = poolInfo[8];
+    if (!isActive) {
+      return {
+        success: false,
+        error: "Staking is paused for this pool",
+        details: {
+          poolId,
+          isActive: false,
+          message: "The pool must be activated before staking",
+        },
+      };
+    }
+
+    const stakingToken = poolInfo[0];
+    console.log(`Staking token address: ${stakingToken}`);
+
+    // Check token balance first
+    const tokenBalance = await publicClient.readContract({
+      address: stakingToken as `0x${string}`,
+      abi: mintABI,
+      functionName: "balanceOf",
+      args: [account.address],
     });
-    console.log(`Pool ${i} information:`, poolInfo);
+    console.log(`Token balance: ${tokenBalance}`);
+
+    // If balance is insufficient, use faucet to get tokens
+    if (BigInt(tokenBalance as bigint) < BigInt(amount)) {
+      console.log("Insufficient token balance. Getting tokens from faucet...");
+
+      const faucetData = encodeFunctionData({
+        abi: mintABI,
+        functionName: "faucet",
+        args: [BigInt(1000000000000000000000000)], // 1,000,000 tokens with 18 decimals
+      });
+
+      const faucetParams = {
+        account,
+        to: stakingToken as `0x${string}`,
+        data: faucetData,
+        gas: BigInt(100000),
+        gasPrice: await publicClient.getGasPrice(),
+        nonce: await publicClient.getTransactionCount({
+          address: account.address,
+          blockTag: "pending",
+        }),
+        chain: chain,
+      };
+
+      const faucetHash = await walletClient.sendTransaction(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        faucetParams as any
+      );
+      console.log(`Faucet transaction sent, hash: ${faucetHash}`);
+
+      const faucetReceipt = await publicClient.waitForTransactionReceipt({
+        hash: faucetHash,
+      });
+      if (faucetReceipt.status === "reverted") {
+        return {
+          success: false,
+          error: "Faucet transaction failed. Cannot obtain tokens.",
+          transactionHash: faucetHash,
+          receipt: faucetReceipt,
+        };
+      }
+
+      // Check updated balance
+      const updatedBalance = await publicClient.readContract({
+        address: stakingToken as `0x${string}`,
+        abi: mintABI,
+        functionName: "balanceOf",
+        args: [account.address],
+      });
+      console.log(`Updated token balance after faucet: ${updatedBalance}`);
+
+      if (BigInt(updatedBalance as bigint) < BigInt(amount)) {
+        return {
+          success: false,
+          error: "Still insufficient balance after faucet",
+          details: {
+            required: amount,
+            available: (updatedBalance as bigint).toString(),
+          },
+        };
+      }
+    }
+
+    // Check token allowance for the YieldFarming contract
+    const tokenAllowance = await publicClient.readContract({
+      address: stakingToken as `0x${string}`,
+      abi: mintABI,
+      functionName: "allowance",
+      args: [account.address, contractAddress.YieldFarming as `0x${string}`],
+    });
+
+    console.log(`Token allowance: ${tokenAllowance}`);
+
+    // If allowance is not enough, approve tokens first
+    if (BigInt(tokenAllowance as bigint) < BigInt(amount)) {
+      console.log("Approving tokens for staking...");
+
+      const approveData = encodeFunctionData({
+        abi: mintABI,
+        functionName: "approve",
+        args: [
+          contractAddress.YieldFarming as `0x${string}`,
+          BigInt(
+            ethers.utils.parseUnits("1000000000000000000000000").toString()
+          ),
+        ],
+      });
+
+      const approveParams = {
+        account,
+        to: stakingToken as `0x${string}`,
+        data: approveData,
+        gas: BigInt(100000),
+        gasPrice: await publicClient.getGasPrice(),
+        nonce: await publicClient.getTransactionCount({
+          address: account.address,
+          blockTag: "pending",
+        }),
+        chain: chain,
+      };
+
+      const approveHash = await walletClient.sendTransaction(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        approveParams as any
+      );
+      console.log(`Approval transaction sent, hash: ${approveHash}`);
+
+      const approveReceipt = await publicClient.waitForTransactionReceipt({
+        hash: approveHash,
+      });
+      if (approveReceipt.status === "reverted") {
+        return {
+          success: false,
+          error: "Token approval failed",
+          transactionHash: approveHash,
+          receipt: approveReceipt,
+        };
+      }
+    }
+
+    // Simulate the staking transaction first
+    try {
+      console.log("Simulating stake transaction...");
+      await publicClient.simulateContract({
+        address: contractAddress.YieldFarming as `0x${string}`,
+        abi: yieldFarmingABI,
+        functionName: "stake",
+        args: [BigInt(poolId), BigInt(amount)],
+        account: account.address,
+      });
+      console.log("Simulation successful, proceeding with actual transaction");
+    } catch (simulationError) {
+      console.error("Stake simulation failed:", simulationError);
+
+      // Check if this is the StakingPaused error (0xfb8f41b2)
+      const errorMessage =
+        simulationError instanceof Error
+          ? simulationError.message
+          : String(simulationError);
+      if (errorMessage.includes("0xfb8f41b2")) {
+        return {
+          success: false,
+          error: "Staking is paused for this pool",
+          details: {
+            poolId,
+            errorCode: "0xfb8f41b2",
+            errorName: "StakingPaused",
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: `Simulation failed: ${errorMessage}`,
+        details: simulationError instanceof Error ? simulationError.cause : {},
+      };
+    }
+
+    const stakeData = encodeFunctionData({
+      abi: yieldFarmingABI,
+      functionName: "stake",
+      args: [BigInt(poolId), BigInt(amount)],
+    });
+
+    const gasLimit = BigInt(300000);
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
+    const txParams = {
+      account,
+      to: contractAddress.YieldFarming as `0x${string}`,
+      data: stakeData,
+      gas: gasLimit,
+      gasPrice,
+      nonce: Number(nonce),
+      chain: chain,
+    };
+
+    console.log("Sending stake transaction...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hash = await walletClient.sendTransaction(txParams as any);
+    console.log("Stake transaction sent, hash:", hash);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    if (receipt.status === "reverted") {
+      console.error("Stake transaction reverted!");
+      try {
+        const revertReason = await publicClient.call({
+          account: account.address,
+          to: contractAddress.YieldFarming as `0x${string}`,
+          data: stakeData,
+          gas: gasLimit,
+          gasPrice,
+        });
+        console.log("Revert reason:", revertReason);
+      } catch (error: unknown) {
+        console.error(
+          "Error getting revert reason:",
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
+    const formattedReceipt = {
+      blockHash: receipt.blockHash,
+      blockNumber: receipt.blockNumber.toString(),
+      contractAddress: receipt.contractAddress,
+      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
+      from: receipt.from,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.map((log) => ({
+        ...log,
+        blockNumber: log.blockNumber.toString(),
+        logIndex: log.logIndex.toString(),
+        transactionIndex: log.transactionIndex.toString(),
+      })),
+      logsBloom: receipt.logsBloom,
+      status: receipt.status,
+      to: receipt.to,
+      transactionHash: receipt.transactionHash,
+      transactionIndex: receipt.transactionIndex.toString(),
+      type: receipt.type,
+    };
+
+    return {
+      success: receipt.status !== "reverted",
+      transactionHash: hash,
+      receipt: formattedReceipt,
+    };
+  } catch (error) {
+    console.error("Error in stake:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error ? error.cause : {},
+    };
+  }
+};
+
+const unstake = async ({
+  chainId,
+  poolId,
+  amount,
+}: {
+  chainId: number;
+  poolId: number;
+  amount: string;
+}) => {
+  try {
+    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error("Private key not found");
+    }
+
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+
+    const chain = networkConfig.chain;
+    const contractAddress = networkConfig.contractAddresses;
+
+    // Get pool info to validate unstaking
+    type RawPoolInfo = [
+      string, // stakingToken
+      string, // rewardToken
+      bigint, // rewardPerSecond
+      bigint, // lastUpdateTime
+      bigint, // accRewardPerShare
+      bigint, // totalStaked
+      bigint, // startTime
+      bigint, // endTime
+      boolean // isActive
+    ];
+
+    const poolInfo = (await publicClient.readContract({
+      address: contractAddress.YieldFarming as `0x${string}`,
+      abi: yieldFarmingABI,
+      functionName: "pools",
+      args: [BigInt(poolId)],
+    })) as RawPoolInfo;
+
+    if (!poolInfo) {
+      throw new Error("Pool not found");
+    }
+
+    const stakingToken = poolInfo[0];
+    console.log(`Staking token address: ${stakingToken}`);
+
+    // Check token balance first
+    const tokenBalance = await publicClient.readContract({
+      address: stakingToken as `0x${string}`,
+      abi: mintABI,
+      functionName: "balanceOf",
+      args: [account.address],
+    });
+
+    // If balance is insufficient, use faucet to get tokens
+    if (BigInt(tokenBalance as bigint) < BigInt(amount)) {
+      console.log("Insufficient token balance. Getting tokens from faucet...");
+    }
+
+    // Check token allowance for the YieldFarming contract
+    const tokenAllowance = await publicClient.readContract({
+      address: stakingToken as `0x${string}`,
+      abi: mintABI,
+      functionName: "allowance",
+      args: [account.address, contractAddress.YieldFarming as `0x${string}`],
+    });
+
+    // If allowance is not enough, approve tokens first
+    if (BigInt(tokenAllowance as bigint) < BigInt(amount)) {
+      console.log("Approving tokens for unstaking...");
+    }
+
+    // Simulate the unstaking transaction first
+    try {
+      console.log("Simulating unstake transaction...");
+      await publicClient.simulateContract({
+        address: contractAddress.YieldFarming as `0x${string}`,
+        abi: yieldFarmingABI,
+        functionName: "unstake",
+        args: [BigInt(poolId), BigInt(amount)],
+        account: account.address,
+      });
+      console.log("Simulation successful, proceeding with actual transaction");
+    } catch (simulationError) {
+      console.error("Unstake simulation failed:", simulationError);
+      return {
+        success: false,
+        error: `Simulation failed: ${
+          simulationError instanceof Error
+            ? simulationError.message
+            : String(simulationError)
+        }`,
+        details: simulationError instanceof Error ? simulationError.cause : {},
+      };
+    }
+
+    const unstakeData = encodeFunctionData({
+      abi: yieldFarmingABI,
+      functionName: "unstake",
+      args: [BigInt(poolId), BigInt(amount)],
+    });
+
+    const gasLimit = BigInt(300000);
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
+    const txParams = {
+      account,
+      to: contractAddress.YieldFarming as `0x${string}`,
+      data: unstakeData,
+      gas: gasLimit,
+      gasPrice,
+      nonce: Number(nonce),
+      chain: chain,
+    };
+
+    console.log("Sending unstake transaction...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hash = await walletClient.sendTransaction(txParams as any);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    if (receipt.status === "reverted") {
+      console.error("Unstake transaction reverted!");
+      try {
+        const revertReason = await publicClient.call({
+          account: account.address,
+          to: contractAddress.YieldFarming as `0x${string}`,
+          data: unstakeData,
+          gas: gasLimit,
+          gasPrice,
+          nonce: Number(nonce),
+        });
+        console.log("Revert reason:", revertReason);
+      } catch (error: unknown) {
+        console.error(
+          "Error getting revert reason:",
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
+    const formattedReceipt = {
+      blockHash: receipt.blockHash,
+      blockNumber: receipt.blockNumber.toString(),
+      contractAddress: receipt.contractAddress,
+      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
+      from: receipt.from,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.map((log) => ({
+        ...log,
+        blockNumber: log.blockNumber.toString(),
+        logIndex: log.logIndex.toString(),
+        transactionIndex: log.transactionIndex.toString(),
+      })),
+      logsBloom: receipt.logsBloom,
+      status: receipt.status,
+      to: receipt.to,
+      transactionHash: receipt.transactionHash,
+      transactionIndex: receipt.transactionIndex.toString(),
+      type: receipt.type,
+    };
+
+    return {
+      success: receipt.status !== "reverted",
+      transactionHash: hash,
+      receipt: formattedReceipt,
+    };
+  } catch (error) {
+    console.error("Error in unstake:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error ? error.cause : {},
+    };
+  }
+};
+
+// Get user information for all pools
+const getUserPoolInfo = async ({ chainId }: { chainId: number }) => {
+  try {
+    const { publicClient } = await initalizeClients({ chainId });
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+    const contractAddress = networkConfig.contractAddresses;
+
+    const poolLength = (await publicClient.readContract({
+      address: contractAddress.YieldFarming as `0x${string}`,
+      abi: yieldFarmingABI,
+      functionName: "poolLength",
+    })) as bigint;
+
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    const userAddress = account.address;
+    const userPoolInfo = [];
+
+    for (let i = 0; i < Number(poolLength); i++) {
+      try {
+        const info = (await publicClient.readContract({
+          address: contractAddress.YieldFarming as `0x${string}`,
+          abi: yieldFarmingABI,
+          functionName: "userInfo",
+          args: [BigInt(i), userAddress as `0x${string}`],
+        })) as [bigint, bigint];
+
+        const formattedInfo = {
+          poolId: i,
+          stakedAmount: {
+            raw: info[0].toString(),
+            formatted: formatUnits(info[0].toString(), 18),
+          },
+          rewardDebt: {
+            raw: info[1].toString(),
+            formatted: formatUnits(info[1].toString(), 18),
+          },
+        };
+
+        userPoolInfo.push(formattedInfo);
+      } catch (error) {
+        console.error(`Error fetching user info for pool ${i}:`, error);
+      }
+    }
+
+    return userPoolInfo;
+  } catch (error) {
+    console.error("Error in getUserInfo:", error);
+    throw error;
+  }
+};
+
+const claimRewards = async ({
+  chainId,
+  poolId,
+}: {
+  chainId: number;
+  poolId: number;
+}) => {
+  try {
+    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+    const contractAddress = networkConfig.contractAddresses;
+
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+
+    const claimRewardsData = encodeFunctionData({
+      abi: yieldFarmingABI,
+      functionName: "claimRewards",
+      args: [BigInt(poolId)],
+    });
+
+    const gasLimit = BigInt(300000);
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
+    const txParams = {
+      account,
+      to: contractAddress.YieldFarming as `0x${string}`,
+      data: claimRewardsData,
+      gas: gasLimit,
+      gasPrice,
+      nonce: Number(nonce),
+      chain: networkConfig.chain,
+    };
+
+    console.log("Sending claim rewards transaction...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hash = await walletClient.sendTransaction(txParams as any);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    if (receipt.status === "reverted") {
+      console.error("Claim rewards transaction reverted!");
+      try {
+        const revertReason = await publicClient.call({
+          account: account.address,
+          to: contractAddress.YieldFarming as `0x${string}`,
+          data: claimRewardsData,
+          gas: gasLimit,
+          gasPrice,
+          nonce: Number(nonce),
+        });
+        console.log("Revert reason:", revertReason);
+      } catch (error: unknown) {
+        console.error(
+          "Error getting revert reason:",
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
+    const formattedReceipt = {
+      blockHash: receipt.blockHash,
+      blockNumber: receipt.blockNumber.toString(),
+      contractAddress: receipt.contractAddress,
+      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
+      from: receipt.from,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.map((log) => ({
+        ...log,
+        blockNumber: log.blockNumber.toString(),
+        logIndex: log.logIndex.toString(),
+        transactionIndex: log.transactionIndex.toString(),
+      })),
+      logsBloom: receipt.logsBloom,
+      status: receipt.status,
+      to: receipt.to,
+      transactionHash: receipt.transactionHash,
+      transactionIndex: receipt.transactionIndex.toString(),
+      type: receipt.type,
+    };
+
+    return {
+      success: receipt.status !== "reverted",
+      transactionHash: hash,
+      receipt: formattedReceipt,
+    };
+  } catch (error) {
+    console.error("Error in claimRewards:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error ? error.cause : {},
+    };
+  }
+};
+
+const emergencyWithdraw = async ({
+  chainId,
+  poolId,
+}: {
+  chainId: number;
+  poolId: number;
+}) => {
+  try {
+    const { publicClient, walletClient } = await initalizeClients({ chainId });
+
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+
+    const emergencyWithdrawData = encodeFunctionData({
+      abi: yieldFarmingABI,
+      functionName: "emergencyWithdraw",
+      args: [BigInt(poolId)],
+    });
+
+    const gasLimit = BigInt(300000);
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+
+    const contractAddress = networkConfig.contractAddresses;
+
+    const txParams = {
+      account,
+      to: contractAddress.YieldFarming as `0x${string}`,
+      data: emergencyWithdrawData,
+      gas: gasLimit,
+      gasPrice,
+      nonce: Number(nonce),
+    };
+
+    const hash = await walletClient.sendTransaction(txParams);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    const formattedReceipt = {
+      blockHash: receipt.blockHash,
+      blockNumber: receipt.blockNumber.toString(),
+      contractAddress: receipt.contractAddress,
+      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
+      from: receipt.from,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.map((log) => ({
+        ...log,
+        blockNumber: log.blockNumber.toString(),
+        logIndex: log.logIndex.toString(),
+        transactionIndex: log.transactionIndex.toString(),
+      })),
+      logsBloom: receipt.logsBloom,
+      status: receipt.status,
+      to: receipt.to,
+      transactionHash: receipt.transactionHash,
+      transactionIndex: receipt.transactionIndex.toString(),
+      type: receipt.type,
+    };
+
+    return {
+      success: receipt.status !== "reverted",
+      transactionHash: hash,
+      receipt: formattedReceipt,
+    };
+  } catch (error) {
+    console.error("Error in emergencyWithdraw:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error ? error.cause : {},
+    };
   }
 };
 
@@ -1531,4 +2350,9 @@ export const integration = {
   setTokenPrice,
   createPool,
   getPoolInformation,
+  stake,
+  getUserPoolInfo,
+  unstake,
+  claimRewards,
+  emergencyWithdraw,
 };
