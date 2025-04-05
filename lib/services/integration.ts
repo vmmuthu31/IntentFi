@@ -1422,12 +1422,62 @@ const createPool = async ({
           error instanceof Error ? error.message : String(error)
         );
       }
+    } else {
+      // Pool was created successfully, get the new pool ID
+      try {
+        const poolLength = await publicClient.readContract({
+          address: contractAddress.YieldFarming as `0x${string}`,
+          abi: yieldFarmingABI,
+          functionName: "poolLength",
+        });
+
+        if (poolLength !== undefined) {
+          const newPoolId = Number(poolLength) - 1;
+          console.log(`New pool created with ID: ${newPoolId}`);
+
+          // Activate the pool
+          const activateData = encodeFunctionData({
+            abi: yieldFarmingABI,
+            functionName: "activatePool",
+            args: [BigInt(newPoolId)],
+          });
+
+          // Use type assertion for the transaction parameters
+          const activateTxParams = {
+            account,
+            to: contractAddress.YieldFarming as `0x${string}`,
+            data: activateData,
+            gas: gasLimit,
+            gasPrice,
+            nonce: Number(nonce) + 1, // Use next nonce as a number
+            chain: chain,
+          };
+
+          console.log("Activating the pool...");
+          const activateHash = await walletClient.sendTransaction(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            activateTxParams as any
+          );
+          console.log("Pool activation transaction sent, hash:", activateHash);
+
+          await publicClient.waitForTransactionReceipt({ hash: activateHash });
+          console.log("Pool activation completed");
+        }
+      } catch (activateError) {
+        console.error(
+          "Error activating pool:",
+          activateError instanceof Error
+            ? activateError.message
+            : String(activateError)
+        );
+      }
     }
 
     return {
       success: receipt.status !== "reverted",
       transactionHash: hash,
       receipt: formattedReceipt,
+      poolActivationSuccess: true,
     };
   } catch (error) {
     console.error("Create pool error:", error);
