@@ -91,7 +91,7 @@ export default function VerifyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto py-12 px-4">
         <motion.div
           initial="hidden"
@@ -100,10 +100,10 @@ export default function VerifyPage() {
           className="max-w-4xl mx-auto"
         >
           <header className="text-center mb-12">
-            <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-500 mb-4">
+            <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-yellow-500 mb-4">
               Secure Identity Verification
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
               Verify your identity on-chain while maintaining complete privacy
               and control of your data
             </p>
@@ -115,13 +115,13 @@ export default function VerifyPage() {
             initial="hidden"
             animate="visible"
             variants={fadeIn}
-            className="bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden"
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl overflow-hidden"
           >
             {!isConnected ? (
               <div className="flex flex-col items-center justify-center p-12">
                 <motion.div
                   animate={pulseAnimation}
-                  className="mb-8 w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center"
+                  className="mb-8 w-24 h-24 rounded-full bg-orange-900/20 flex items-center justify-center"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -129,7 +129,7 @@ export default function VerifyPage() {
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="w-12 h-12 text-blue-600"
+                    className="w-12 h-12 text-orange-500"
                   >
                     <path
                       strokeLinecap="round"
@@ -138,10 +138,10 @@ export default function VerifyPage() {
                     />
                   </svg>
                 </motion.div>
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                <h2 className="text-2xl font-semibold text-white mb-4">
                   Connect Your Wallet
                 </h2>
-                <p className="text-gray-600 mb-8 text-center max-w-md">
+                <p className="text-gray-400 mb-8 text-center max-w-md">
                   Connect your wallet to begin the verification process and
                   access the full features of the platform
                 </p>
@@ -158,14 +158,14 @@ export default function VerifyPage() {
                   >
                     <motion.div variants={item}>
                       <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-orange-900/30 flex items-center justify-center">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="w-4 h-4 text-green-600"
+                            className="w-4 h-4 text-orange-500"
                           >
                             <path
                               strokeLinecap="round"
@@ -174,11 +174,11 @@ export default function VerifyPage() {
                             />
                           </svg>
                         </div>
-                        <p className="text-green-700 font-medium">
+                        <p className="text-orange-500 font-medium">
                           Wallet Connected
                         </p>
                       </div>
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-gray-400 text-sm">
                         Address:{" "}
                         {address
                           ? `${address.substring(0, 6)}...${address.substring(
@@ -190,12 +190,12 @@ export default function VerifyPage() {
 
                     <motion.h2
                       variants={item}
-                      className="text-2xl font-bold text-gray-800"
+                      className="text-2xl font-bold text-white"
                     >
                       Verify Your Identity
                     </motion.h2>
 
-                    <motion.p variants={item} className="text-gray-600">
+                    <motion.p variants={item} className="text-gray-400">
                       Complete these steps to verify your identity with Self
                       protocol:
                     </motion.p>
@@ -205,14 +205,14 @@ export default function VerifyPage() {
                         variants={item}
                         className="flex items-start space-x-3"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-900/20 flex items-center justify-center text-orange-500 font-bold">
                           1
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-800">
+                          <h3 className="font-medium text-white">
                             Download the Self App
                           </h3>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Get the Self app from App Store or Google Play
                           </p>
                           <div className="flex space-x-2 mt-2">
@@ -220,7 +220,7 @@ export default function VerifyPage() {
                               href="https://apps.apple.com/app/self/id1630008171"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center"
+                              className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center border border-zinc-700"
                             >
                               <svg
                                 className="w-4 h-4 mr-1"
@@ -235,7 +235,7 @@ export default function VerifyPage() {
                               href="https://play.google.com/store/apps/details?id=xyz.self.passport"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center"
+                              className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center border border-zinc-700"
                             >
                               <svg
                                 className="w-4 h-4 mr-1"
@@ -254,14 +254,14 @@ export default function VerifyPage() {
                         variants={item}
                         className="flex items-start space-x-3"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-900/20 flex items-center justify-center text-orange-500 font-bold">
                           2
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-800">
+                          <h3 className="font-medium text-white">
                             Click &quot;Start Verification&quot;
                           </h3>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             We&apos;ll generate a unique QR code for your
                             verification
                           </p>
@@ -272,14 +272,14 @@ export default function VerifyPage() {
                         variants={item}
                         className="flex items-start space-x-3"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-900/20 flex items-center justify-center text-orange-500 font-bold">
                           3
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-800">
+                          <h3 className="font-medium text-white">
                             Scan QR Code with Self App
                           </h3>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Open the Self app and scan the QR code to begin
                             verification
                           </p>
@@ -290,14 +290,14 @@ export default function VerifyPage() {
                         variants={item}
                         className="flex items-start space-x-3"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-900/20 flex items-center justify-center text-orange-500 font-bold">
                           4
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-800">
+                          <h3 className="font-medium text-white">
                             Complete Verification
                           </h3>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Follow the instructions in the Self app to verify
                             your identity
                           </p>
@@ -309,7 +309,7 @@ export default function VerifyPage() {
                       <Button
                         onClick={handleStartVerification}
                         disabled={loading}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full flex justify-center items-center"
+                        className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white px-8 py-4 rounded-lg text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full flex justify-center items-center"
                       >
                         {loading ? (
                           <div className="flex items-center">
@@ -343,16 +343,16 @@ export default function VerifyPage() {
                   </motion.div>
                 </div>
 
-                <div className="bg-blue-50 p-10 flex flex-col items-center justify-center">
+                <div className="bg-zinc-800/50 p-10 flex flex-col items-center justify-center">
                   <motion.div
                     variants={fadeIn}
-                    className="rounded-xl bg-white p-6 shadow-lg border border-blue-100"
+                    className="rounded-xl bg-zinc-900 p-6 shadow-lg border border-zinc-800"
                   >
-                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                      <h3 className="text-blue-800 font-bold mb-2">
+                    <div className="bg-orange-900/10 rounded-lg p-4 mb-4 border border-orange-900/20">
+                      <h3 className="text-orange-500 font-bold mb-2">
                         Verify Once, Use Anywhere
                       </h3>
-                      <p className="text-blue-700 text-sm">
+                      <p className="text-orange-200/70 text-sm">
                         Your verification is cached after successful completion.
                         You&apos;ll only need to verify once, and the protocol
                         will remember your verification status for all future
@@ -362,14 +362,14 @@ export default function VerifyPage() {
 
                     <div className="space-y-3">
                       <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-orange-900/30 flex items-center justify-center mt-0.5">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="w-4 h-4 text-green-600"
+                            className="w-4 h-4 text-orange-500"
                           >
                             <path
                               strokeLinecap="round"
@@ -379,24 +379,24 @@ export default function VerifyPage() {
                           </svg>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-800">
+                          <h4 className="font-medium text-white">
                             Privacy Preserving
                           </h4>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Your personal data never leaves your device
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-orange-900/30 flex items-center justify-center mt-0.5">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="w-4 h-4 text-green-600"
+                            className="w-4 h-4 text-orange-500"
                           >
                             <path
                               strokeLinecap="round"
@@ -406,24 +406,24 @@ export default function VerifyPage() {
                           </svg>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-800">
+                          <h4 className="font-medium text-white">
                             Zero-Knowledge Proofs
                           </h4>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Verify claims without revealing the underlying data
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-orange-900/30 flex items-center justify-center mt-0.5">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="w-4 h-4 text-green-600"
+                            className="w-4 h-4 text-orange-500"
                           >
                             <path
                               strokeLinecap="round"
@@ -433,24 +433,24 @@ export default function VerifyPage() {
                           </svg>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-800">
+                          <h4 className="font-medium text-white">
                             Onchain Verification
                           </h4>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Securely stored on the Celo blockchain
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-orange-900/30 flex items-center justify-center mt-0.5">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="w-4 h-4 text-green-600"
+                            className="w-4 h-4 text-orange-500"
                           >
                             <path
                               strokeLinecap="round"
@@ -460,10 +460,10 @@ export default function VerifyPage() {
                           </svg>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-800">
+                          <h4 className="font-medium text-white">
                             Regulatory Compliant
                           </h4>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-400 text-sm">
                             Meets KYC/AML requirements without compromising
                             privacy
                           </p>
@@ -481,12 +481,12 @@ export default function VerifyPage() {
                   transition={{ duration: 0.5 }}
                   className="space-y-6"
                 >
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-6">
                     Scan QR Code with Self App
                   </h2>
 
                   <div className="flex flex-col items-center justify-center">
-                    <div className="mb-8 border-4 border-blue-100 rounded-2xl p-4 bg-white inline-block shadow-lg">
+                    <div className="mb-8 border-4 border-orange-500/20 rounded-2xl p-4 bg-zinc-800 inline-block shadow-lg">
                       {selfApp && (
                         <SelfQRcodeWrapper
                           selfApp={selfApp}
@@ -498,8 +498,8 @@ export default function VerifyPage() {
 
                     <div className="max-w-md mx-auto">
                       <div className="space-y-4">
-                        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                          <h3 className="text-amber-800 font-medium flex items-center">
+                        <div className="p-4 bg-orange-900/20 rounded-lg border border-orange-900/30">
+                          <h3 className="text-orange-500 font-medium flex items-center">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               fill="none"
@@ -516,16 +516,16 @@ export default function VerifyPage() {
                             </svg>
                             Don&apos;t see the QR code?
                           </h3>
-                          <p className="text-amber-700 text-sm">
+                          <p className="text-orange-200/70 text-sm">
                             Make sure you have downloaded the Self app and try
                             refreshing the page.
                           </p>
                         </div>
 
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <p className="text-gray-600 text-sm">
+                        <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+                          <p className="text-gray-400 text-sm">
                             Contract address:{" "}
-                            <span className="font-mono text-gray-800">
+                            <span className="font-mono text-gray-300">
                               {identityVerifierAddress}
                             </span>
                           </p>
@@ -545,15 +545,15 @@ export default function VerifyPage() {
                 >
                   <div className="inline-flex items-center justify-center mb-8">
                     <div className="relative">
-                      <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-25"></div>
-                      <div className="relative w-24 h-24 rounded-full bg-green-100 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full bg-orange-500/20 animate-ping opacity-25"></div>
+                      <div className="relative w-24 h-24 rounded-full bg-orange-900/30 flex items-center justify-center">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
                           strokeWidth={2}
                           stroke="currentColor"
-                          className="w-12 h-12 text-green-600"
+                          className="w-12 h-12 text-orange-500"
                         >
                           <path
                             strokeLinecap="round"
@@ -565,20 +565,20 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
-                  <h2 className="text-3xl font-bold text-green-600 mb-4">
+                  <h2 className="text-3xl font-bold text-orange-500 mb-4">
                     Verification Successful!
                   </h2>
 
-                  <p className="text-gray-700 text-lg mb-6">
+                  <p className="text-gray-300 text-lg mb-6">
                     Your identity has been verified and <strong>cached</strong>{" "}
                     on the Celo blockchain.
                   </p>
 
-                  <div className="p-6 bg-green-50 border border-green-100 rounded-xl mb-8">
-                    <h3 className="text-green-800 font-medium mb-2">
+                  <div className="p-6 bg-orange-900/10 border border-orange-900/20 rounded-xl mb-8">
+                    <h3 className="text-orange-500 font-medium mb-2">
                       Verification Successfully Cached
                     </h3>
-                    <p className="text-green-700">
+                    <p className="text-orange-200/70">
                       Your verification status has been securely stored. You
                       won&apos;t need to perform this verification again for
                       future transactions with our protocol.
@@ -587,13 +587,16 @@ export default function VerifyPage() {
 
                   <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                     <Link href="/lending" className="flex-1">
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-6 text-lg">
+                      <Button className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 py-6 text-lg">
                         Go to Lending Platform
                       </Button>
                     </Link>
 
                     <Link href="/" className="flex-1">
-                      <Button variant="outline" className="w-full py-6 text-lg">
+                      <Button
+                        variant="outline"
+                        className="w-full py-6 text-lg border-zinc-700 text-white hover:bg-zinc-800"
+                      >
                         Return to Home
                       </Button>
                     </Link>
@@ -607,14 +610,14 @@ export default function VerifyPage() {
                   animate={{ opacity: 1 }}
                   className="max-w-lg mx-auto"
                 >
-                  <div className="mb-8 w-24 h-24 mx-auto rounded-full bg-red-100 flex items-center justify-center">
+                  <div className="mb-8 w-24 h-24 mx-auto rounded-full bg-red-900/30 flex items-center justify-center">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
-                      className="w-12 h-12 text-red-600"
+                      className="w-12 h-12 text-red-500"
                     >
                       <path
                         strokeLinecap="round"
@@ -624,20 +627,20 @@ export default function VerifyPage() {
                     </svg>
                   </div>
 
-                  <h2 className="text-3xl font-bold text-red-600 mb-4">
+                  <h2 className="text-3xl font-bold text-red-500 mb-4">
                     Verification Failed
                   </h2>
 
-                  <p className="text-gray-700 mb-8">
+                  <p className="text-gray-300 mb-8">
                     There was an issue with the verification process. Please try
                     again.
                   </p>
 
-                  <div className="p-6 bg-red-50 border border-red-100 rounded-xl mb-8 text-left">
-                    <h3 className="text-red-800 font-medium mb-2">
+                  <div className="p-6 bg-red-900/10 border border-red-900/20 rounded-xl mb-8 text-left">
+                    <h3 className="text-red-500 font-medium mb-2">
                       Possible Issues:
                     </h3>
-                    <ul className="text-red-700 text-sm space-y-2 list-disc pl-5">
+                    <ul className="text-red-200/70 text-sm space-y-2 list-disc pl-5">
                       <li>
                         The Self app was closed before completing verification
                       </li>
@@ -649,7 +652,7 @@ export default function VerifyPage() {
 
                   <Button
                     onClick={handleStartVerification}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg text-lg font-medium"
+                    className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white px-8 py-4 rounded-lg text-lg font-medium"
                   >
                     Try Again
                   </Button>
@@ -670,14 +673,14 @@ export default function VerifyPage() {
               href="https://docs.self.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-orange-500 hover:text-orange-400 font-medium"
             >
               Visit Self Documentation
             </a>{" "}
             or{" "}
             <a
               href="mailto:support@intent.fi"
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-orange-500 hover:text-orange-400 font-medium"
             >
               Contact Support
             </a>
@@ -687,8 +690,3 @@ export default function VerifyPage() {
     </div>
   );
 }
-
-// add the verify.ts from happy birthday
-// use ngrok http 3000
-// generate the new scope with hashEndpointWithScope and ngrok url and use this inthe contract constructor
-// in the qr code, add the normal scope, new endpoint, endpointype = staging_https | https
