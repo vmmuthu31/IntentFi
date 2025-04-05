@@ -24,10 +24,11 @@ export interface IntentExecutionPlan {
  * @returns Promise resolving to an execution plan
  */
 export async function processIntent(
-  intent: string
+  intent: string,
+  chainId: number
 ): Promise<IntentExecutionPlan> {
   try {
-    const claudeResult = await processWithClaude(intent);
+    const claudeResult = await processWithClaude(intent, chainId);
     return claudeResult;
   } catch (error) {
     console.error(
@@ -41,7 +42,10 @@ export async function processIntent(
 /**
  * Process intent using Anthropic's Claude
  */
-async function processWithClaude(intent: string): Promise<IntentExecutionPlan> {
+async function processWithClaude(
+  intent: string,
+  chainId: number
+): Promise<IntentExecutionPlan> {
   try {
     const response = await fetch(`${apiConfig.claude.baseUrl}/v1/messages`, {
       method: "POST",
@@ -200,12 +204,12 @@ Return ONLY the JSON with no other text.`,
         const numericChainId = parseInt(chainId, 10);
         const balanceResult = await integration.getTokenBalance({
           chainId: numericChainId,
-          token
+          token,
         });
-        
+
         // Assuming balanceResult is a BigInt or something that needs conversion
         const formattedBalance = BigInt(balanceResult).toString();
-        
+
         result = {
           success: true,
           operation: "balanceOf",
@@ -213,8 +217,8 @@ Return ONLY the JSON with no other text.`,
             chain,
             token,
             chainId: numericChainId,
-            balance: formattedBalance
-          }
+            balance: formattedBalance,
+          },
         };
       } else if (functionName === "borrow") {
         const numericChainId = parseInt(chainId, 10);
@@ -223,7 +227,7 @@ Return ONLY the JSON with no other text.`,
           token,
           amount,
         });
-      
+
         result = {
           success: true,
           operation: "borrow",
@@ -235,9 +239,9 @@ Return ONLY the JSON with no other text.`,
             transactionResult: {
               success: borrowResult.success,
               transactionHash: borrowResult.transactionHash,
-              receipt: borrowResult.receipt
-            }
-          }
+              receipt: borrowResult.receipt,
+            },
+          },
         };
       } else if (functionName == "repay") {
         const numericChainId = parseInt(chainId, 10);
@@ -246,7 +250,7 @@ Return ONLY the JSON with no other text.`,
           token,
           amount,
         });
-      
+
         result = {
           steps: [
             {

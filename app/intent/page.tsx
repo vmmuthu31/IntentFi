@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,6 +56,8 @@ type IntentResultWithMetadata = IntentExecutionPlan & {
 export default function IntentPage() {
   const [intent, setIntent] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const chainId = useChainId();
+  console.log("chainId", chainId);
   const [intentResult, setIntentResult] =
     useState<IntentResultWithMetadata | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -175,7 +177,7 @@ export default function IntentPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ intent }),
+        body: JSON.stringify({ intent, chainId }),
       });
 
       const data = await response.json();
@@ -349,28 +351,43 @@ export default function IntentPage() {
                       </h3>
                       <div className="space-y-4">
                         <div>
-                
                           <ol className="list-decimal pl-5 space-y-1">
                             {intentResult.steps.map((step, i) => (
                               <li key={i} className="text-sm">
-                                {step.description.includes("Transaction succeeded:") ? (
+                                {step.description.includes(
+                                  "Transaction succeeded:"
+                                ) ? (
                                   <>
-                                    {step.description.split("Transaction succeeded:")[0]}
+                                    {
+                                      step.description.split(
+                                        "Transaction succeeded:"
+                                      )[0]
+                                    }
                                     Transaction succeeded:{" "}
-                                    <a 
-                                      href={`https://alfajores.celoscan.io/tx/${step.description.split("Transaction succeeded:")[1].trim().split(" ")[0]}`}
+                                    <a
+                                      href={`https://alfajores.celoscan.io/tx/${
+                                        step.description
+                                          .split("Transaction succeeded:")[1]
+                                          .trim()
+                                          .split(" ")[0]
+                                      }`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-blue-500 hover:underline"
                                     >
-                                      {step.description.split("Transaction succeeded:")[1].trim().split(" ")[0]}
+                                      {
+                                        step.description
+                                          .split("Transaction succeeded:")[1]
+                                          .trim()
+                                          .split(" ")[0]
+                                      }
                                     </a>
                                   </>
                                 ) : (
                                   step.description
                                 )}{" "}
                                 <span className="text-xs text-muted-foreground">
-                                 ({step.chain})
+                                  ({step.chain})
                                 </span>
                                 {executionStatus.length > 0 && (
                                   <span className="ml-2">
@@ -415,8 +432,7 @@ export default function IntentPage() {
                               ✅ Execution Complete
                             </Button>
                           ) : (
-                            <>
-                            </>
+                            <></>
                             // <Button
                             //   onClick={executeIntent}
                             //   disabled={!isConnected}
@@ -438,8 +454,8 @@ export default function IntentPage() {
                   Clear
                 </Button>
                 {/* if no wallet connected then dontallow to process intent   */}
-                {!intentResult && (
-                  !isConnected ? (
+                {!intentResult &&
+                  (!isConnected ? (
                     <Button variant="outline" disabled>
                       Connect Wallet to Process Intent
                     </Button>
@@ -451,8 +467,7 @@ export default function IntentPage() {
                     >
                       {isProcessing ? "Processing..." : "Process Intent"}
                     </Button>
-                  )
-                )}
+                  ))}
               </CardFooter>
             </Card>
           </TabsContent>

@@ -4,7 +4,7 @@ import { processIntent } from "@/lib/services/intent-service";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { intent } = body;
+    const { intent, chainId } = body;
 
     if (!intent || typeof intent !== "string") {
       return NextResponse.json(
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await processIntent(intent);
+    const result = await processIntent(intent, chainId);
 
     return NextResponse.json({
       success: true,

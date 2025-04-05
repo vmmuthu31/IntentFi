@@ -879,9 +879,9 @@ const borrow = async ({
       networkConfig.contractAddresses.Token[
         token as keyof typeof networkConfig.contractAddresses.Token
       ];
-    
-      const tokenAmount = parseUnits(amount, 18);
-    
+
+    const tokenAmount = parseUnits(amount, 18);
+
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "borrow",
