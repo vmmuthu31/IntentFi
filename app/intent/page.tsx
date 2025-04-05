@@ -361,7 +361,7 @@ export default function IntentPage() {
                                     <a
                                       href={step.chain === "celoAlfajores" 
                                         ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
-                                        : step.chain === "rootstockTestnet" 
+                                        : step.chain === "rootstock" 
                                           ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
                                           : `#`}
                                       target="_blank"
