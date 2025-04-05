@@ -41,8 +41,8 @@ const StandaloneFormDescription = ({
 );
 
 const exampleSubset = [
-  "Swap 0.1 ETH for CELO on Celo network",
-  "Send 10 USDC to 0x1234...5678 on Celo",
+  "Deposit 10 USDC on Celo",
+  "Borrow 10 rBTC on Rootstock",
   "Check my token balances on Celo network",
   "Provide liquidity with 5 CELO and 10 USDC ",
 ];
@@ -361,7 +361,7 @@ export default function IntentPage() {
                                     <a
                                       href={step.chain === "celoAlfajores" 
                                         ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
-                                        : step.chain === "rootstockTestnet" 
+                                        : step.chain === "rootstock" 
                                           ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
                                           : `#`}
                                       target="_blank"
