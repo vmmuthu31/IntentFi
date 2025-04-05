@@ -123,7 +123,7 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              Our AI engine
+              <GlitchText text="Our AI engine" className="text-orange-500 hover:cursor-pointer" />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -162,7 +162,7 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              It runs, adapts &amp; grows
+              <GlitchText text="It runs, adapts &amp; grows" className="text-orange-500 hover:cursor-pointer" />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -222,7 +222,7 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-                Intent-to-Action AI Engine
+              <GlitchText text="Intent-to-Action AI Engine" className="text-orange-500 hover:cursor-pointer" />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -250,7 +250,7 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-                Built-in Yielding, Lending & Borrowing
+              <GlitchText text="Built-in Yielding, Lending & Borrowing" className="text-orange-500 hover:cursor-pointer" />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -288,7 +288,7 @@ export default function Home() {
                   className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                   style={{ fontFamily: "InstrumentSerif" }}
                 >
-                  Gasless, Compliant, and Cross-Chain
+              <GlitchText text="Gasless, Compliant, and Cross-Chain" className="text-orange-500 hover:cursor-pointer" />
                 </div>
                 <div className="text-gray-400 mb-4 text-base">
                   No wallet switching. No bridging. No repeated KYC prompts.
@@ -321,7 +321,7 @@ export default function Home() {
                 className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                 style={{ fontFamily: "InstrumentSerif" }}
               >
-                Always-On Optimization
+              <GlitchText text="Always-On Optimization" className="text-orange-500 hover:cursor-pointer" />
               </h3>
 
               <p className="text-gray-400 mb-4 text-lg">
@@ -351,7 +351,7 @@ export default function Home() {
                   className="text-2xl md:text-4xl font-serif text-orange-500 mb-4"
                   style={{ fontFamily: "InstrumentSerif" }}
                 >
-                  One-Time KYC. Full Compliance.
+              <GlitchText text="One-Time KYC. Full Compliance." className="text-orange-500 hover:cursor-pointer" />
                 </h3>
 
                 <p className="text-gray-400 mb-4 text-lg">
@@ -402,14 +402,14 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              01.
+              <GlitchText text="01." className="text-orange-500 hover:cursor-pointer" />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              DeFi Explorer
+              <GlitchText text="DeFi Explorer" className="text-orange-500 hover:cursor-pointer" />
             </h3>
 
             <ul className="text-white text-lg list-none">
@@ -436,20 +436,20 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              02.
+              <GlitchText text="02." className="text-orange-500 hover:cursor-pointer" />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              Investor
+              <GlitchText text="Investor" className="text-orange-500 hover:cursor-pointer" />
             </h3>
 
             <ul className="text-white text-lg list-none">
               <li className="">
                 <span className="text-xl">→</span>
-                “Move my USDC to the highest APY vault”
+                “Buy $100 ETH every Friday if RSI &lt; 40”  
               </li>
               <li className="">
                 <span className="text-xl">→</span>
@@ -472,14 +472,14 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              03.
+              <GlitchText text="03." className="text-orange-500 hover:cursor-pointer" />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              Portfolio Manager
+              <GlitchText text="Portfolio Manager" className="text-orange-500 hover:cursor-pointer" />
             </h3>
 
             <ul className="text-white text-lg list-none">
@@ -506,14 +506,14 @@ export default function Home() {
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              04.
+              <GlitchText text="04." className="text-orange-500 hover:cursor-pointer" />
             </div>
             {/* Intent Title */}
             <h3
               className="text-2xl md:text-3xl font-serif text-orange-500 mb-4"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              DAO Treasury Lead
+              <GlitchText text="DAO Treasury Lead" className="text-orange-500 hover:cursor-pointer" />
             </h3>
 
             <ul className="text-white text-lg list-none">
