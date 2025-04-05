@@ -71,7 +71,6 @@ export function MobileNav() {
           ))}
           <div className="flex pl-3 items-center gap-4">
             <WalletConnect />
-            <ThemeToggle />
           </div>
         </nav>
       </SheetContent>
