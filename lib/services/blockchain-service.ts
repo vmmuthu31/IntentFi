@@ -1,814 +1,461 @@
 /**
- * Blockchain Service
+ * Integration Service
  *
- * This service handles interactions with blockchain networks and smart contracts.
+ * This service provides integration with blockchain networks using ethers.js
+ * It handles transaction signing and other blockchain operations
  */
 
-import { encodeFunctionData } from "viem";
-import { toSafeSmartAccount } from "permissionless/accounts";
-import { createPublicClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { celoAlfajores } from "viem/chains";
-import {
-  entryPoint07Address,
-  EntryPointVersion,
-} from "viem/account-abstraction";
-import { createSmartAccountClient } from "permissionless";
-import { createPimlicoClient } from "permissionless/clients/pimlico";
-import { erc7579Actions } from "permissionless/actions/erc7579";
+import { ethers, BigNumber } from "ethers";
 
-// ABI imports
-const erc20ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "value", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "owner", type: "address" },
-      { internalType: "address", name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-];
+import MintTokenAbi from "../../artifacts/MockToken.json";
+import LendingPoolAbi from "../../artifacts/LendingPool.json";
+import PriceOracleAbi from "../../artifacts/PriceOracle.json";
+// TODO: Use the correct ABI for the YieldFarm
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import YieldTokenAbi from "../../artifacts/YieldFarm.json";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import PlatformTokenAbi from "../../artifacts/Protocol.json";
 
-const lendingABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "token", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "deposit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "token", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "token", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "borrow",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
+// Type definitions
+interface NetworkConfig {
+  chainId: number;
+  name: string;
+  network: string;
+  rpcUrl: string;
+  nativeCurrency: {
+    decimals: number;
+    name: string;
+    symbol: string;
+  };
+  contractAddresses: {
+    [key: string]: string | { [key: string]: string };
+  };
+}
 
-// Create public client
-let publicClient = createPublicClient({
-  chain: celoAlfajores,
-  transport: http(process.env.NEXT_PUBLIC_INFURA_URL || ""),
-});
+interface DepositRequest {
+  body: {
+    contractAddress: string;
+    token: string;
+    amount: string | number;
+  };
+}
 
-// State management
-let isInitializing = false;
-let isDeploying = false;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let account: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let smartAccountClient: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let pimlicoClient: any = null;
+interface WithdrawRequest {
+  body: {
+    contractAddress: string;
+    token: string;
+    amount: string | number;
+  };
+}
 
-// Initialize clients function
-export const initClients = async () => {
+interface BorrowRequest {
+  body: {
+    contractAddress: string;
+    token: string;
+    amount: string | number;
+  };
+}
+
+interface RepayRequest {
+  body: {
+    contractAddress: string;
+    token: string;
+    amount: string | number;
+  };
+}
+
+interface TransactionParams {
+  to?: string;
+  from?: string;
+  nonce?: number;
+  gasLimit?: BigNumber;
+  gasPrice?: BigNumber;
+  data?: string;
+  value?: BigNumber;
+  chainId?: number;
+}
+
+interface TransactionResult {
+  success: boolean;
+  transactionHash?: string;
+  receipt?: ethers.providers.TransactionReceipt;
+  error?: string;
+  details?: {
+    balance?: string;
+    required?: string;
+    missingAmount?: string;
+    message?: string;
+    address?: string;
+    faucetUrl?: string;
+    code?: string;
+    parameters?: Record<string, unknown>;
+    chain?: string;
+  };
+}
+
+interface ApproveRequest {
+  body: {
+    contractAddress: string;
+    spenderAddress: string;
+    allowanceAmount: string | number;
+  };
+}
+
+/**
+ * Network configurations
+ */
+const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
+  // Celo Alfajores Testnet
+  44787: {
+    chainId: 44787,
+    name: "Alfajores",
+    network: "celo-alfajores",
+    rpcUrl:
+      process.env.CELO_RPC_URL || "https://alfajores-forno.celo-testnet.org",
+    nativeCurrency: {
+      decimals: 18,
+      name: "CELO",
+      symbol: "CELO",
+    },
+    contractAddresses: {
+      PriceOracle: "0x308b659c3b437cfb4f54573e9c3c03aceb8b5205",
+      LendingPool: "0x884184a9afb1b8f44fad1c74a63b739a7c82801d",
+      YieldFarm: "0xa2ae5cb0b0e23f710887be2676f1381fb9e4fe44",
+      DeFIPlatform: "0x649f3f2f4ab598272f2796401968ed74cbea948c",
+      Token: {
+        USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
+        CELO: "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5",
+      },
+    },
+  },
+  // Ethereum Mainnet
+  1: {
+    chainId: 1,
+    name: "Ethereum Mainnet",
+    network: "ethereum-mainnet",
+    rpcUrl:
+      process.env.ETH_RPC_URL || "https://mainnet.infura.io/v3/your-infura-key",
+    nativeCurrency: {
+      decimals: 18,
+      name: "Ether",
+      symbol: "ETH",
+    },
+    contractAddresses: {
+      // Add actual contract addresses for Ethereum mainnet
+      PriceOracle: "",
+      LendingPool: "",
+      YieldFarm: "",
+      DeFIPlatform: "",
+      Token: {
+        USDC: "",
+        ETH: "",
+      },
+    },
+  },
+  // Add more networks as needed
+};
+
+/**
+ * Get network configuration based on chainId
+ * @param {number} chainId - Chain ID of the network
+ * @returns {NetworkConfig} Network configuration
+ */
+const getConfig = (chainId?: number): NetworkConfig => {
+  // Default to Celo Alfajores if no chainId provided
+  const defaultChainId = 44787;
+  const targetChainId = chainId || defaultChainId;
+
+  const config = NETWORK_CONFIGS[targetChainId];
+  if (!config) {
+    throw new Error(
+      `Network configuration not found for chain ID: ${targetChainId}`
+    );
+  }
+
+  return config;
+};
+
+// Cache provider and wallet instances
+let provider: ethers.providers.JsonRpcProvider | undefined;
+let wallet: ethers.Wallet | undefined;
+let currentChainId: number | undefined;
+
+/**
+ * Initialize the blockchain connection
+ * @param {number} chainId - Chain ID of the network to connect to
+ * @returns {Promise<boolean>} Success status
+ */
+const initBlockchain = async (chainId?: number): Promise<boolean> => {
   try {
-    // Prevent multiple concurrent initialization
-    if (isInitializing) {
-      console.log("Initialization already in progress, waiting...");
-      await new Promise((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (!isInitializing) {
-            clearInterval(checkInterval);
-            resolve(true);
-          }
-        }, 500);
-      });
-      return !!account;
-    }
+    const privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) throw new Error("Missing PRIVATE_KEY");
 
-    isInitializing = true;
+    // Get network config based on chainId
+    const networkConfig = getConfig(chainId);
+    currentChainId = networkConfig.chainId;
 
-    const apiKey = process.env.NEXT_PUBLIC_PIMLICO_API_KEY;
-    if (!apiKey) {
-      console.error("Missing PIMLICO_API_KEY");
-      isInitializing = false;
-      return false;
-    }
+    // Initialize provider with network config
+    provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
 
-    const privateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
-    if (!privateKey) {
-      console.error("Missing PRIVATE_KEY");
-      isInitializing = false;
-      return false;
-    }
+    // Create wallet instance
+    wallet = new ethers.Wallet(privateKey, provider);
 
-    // Update public client for reading blockchain state
-    publicClient = createPublicClient({
-      chain: celoAlfajores,
-      transport: http(process.env.NEXT_PUBLIC_INFURA_URL || ""),
-    });
+    // Test connection by getting balance
+    const balance = await provider.getBalance(wallet.address);
+    console.log(
+      `Account balance on ${networkConfig.name}:`,
+      ethers.utils.formatEther(balance)
+    );
 
-    // Create Pimlico client for bundler services
-    const pimlicoUrl = `https://api.pimlico.io/v2/44787/rpc?apikey=${apiKey}`;
-    console.log("Using Pimlico URL:", pimlicoUrl);
-
-    // Create Pimlico paymaster client
-    pimlicoClient = createPimlicoClient({
-      chain: celoAlfajores,
-      transport: http(pimlicoUrl),
-      entryPoint: {
-        address: entryPoint07Address,
-        version: "0.7" as EntryPointVersion,
-      },
-    });
-
-    // Create smart account with owner derived from private key
-    const owner = privateKeyToAccount(privateKey as `0x${string}`);
-    console.log("Owner address:", owner.address);
-
-    // Create the safe account (this doesn't deploy it)
-    account = await toSafeSmartAccount({
-      client: publicClient,
-      owners: [owner],
-      version: "1.4.1",
-      entryPoint: {
-        address: entryPoint07Address,
-        version: "0.7",
-      },
-      safe4337ModuleAddress: "0x7579EE8307284F293B1927136486880611F20002",
-      erc7579LaunchpadAddress: "0x7579011aB74c46090561ea277Ba79D510c6C00ff",
-      attesters: ["0x000000333034E9f539ce08819E12c1b8Cb29084d"], // Rhinestone attesters
-      attestersThreshold: 1,
-    });
-
-    console.log("Smart account created:", account.address);
-
-    // Check if the account is already deployed
-    const isDeployed = await account.isDeployed();
-    console.log("Smart account is deployed:", isDeployed);
-
-    // Create smart account client with the appropriate bundler and paymaster
-    smartAccountClient = createSmartAccountClient({
-      account: account,
-      chain: celoAlfajores,
-      bundlerTransport: http(pimlicoUrl),
-      paymaster: pimlicoClient,
-      userOperation: {
-        estimateFeesPerGas: async () => {
-          if (pimlicoClient) {
-            // Get gas price from paymaster or use a default
-            const gasPriceResponse =
-              await pimlicoClient.getUserOperationGasPrice();
-            // For Celo, maxFeePerGas must equal maxPriorityFeePerGas
-            const gasPrice = gasPriceResponse.fast.maxFeePerGas;
-            return {
-              maxFeePerGas: gasPrice,
-              maxPriorityFeePerGas: gasPrice, // Same as maxFeePerGas for Celo
-            };
-          }
-          // Fallback to static values
-          const gasPrice = BigInt(3000000000); // 3 Gwei
-          return {
-            maxFeePerGas: gasPrice,
-            maxPriorityFeePerGas: gasPrice,
-          };
-        },
-      },
-    }).extend(erc7579Actions());
-
-    // If the account is not deployed, try to deploy it
-    if (!isDeployed) {
-      console.log("Smart account is not deployed, attempting deployment...");
-      try {
-        const success = await deploySmartAccount();
-        if (success) {
-          console.log("Smart account deployed successfully!");
-        } else {
-          console.error("Failed to deploy smart account");
-        }
-      } catch (error) {
-        console.error("Error deploying smart account:", error);
-      }
-    }
-
-    console.log("Blockchain clients initialized");
-    isInitializing = false;
     return true;
   } catch (error) {
-    console.error("Error initializing clients:", error);
-    isInitializing = false;
+    console.error("Error initializing blockchain:", error);
     return false;
   }
 };
 
-// Function to deploy the smart account
-export const deploySmartAccount = async () => {
+/**
+ * Sign and send a transaction
+ * @param {TransactionParams} txParams Transaction parameters
+ * @returns {Promise<TransactionResult>} Transaction result
+ */
+const signAndSendTransaction = async (
+  txParams: TransactionParams
+): Promise<TransactionResult> => {
   try {
-    if (isDeploying) {
-      console.log("Deployment already in progress, waiting...");
-      await new Promise((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (!isDeploying) {
-            clearInterval(checkInterval);
-            resolve(true);
-          }
-        }, 500);
-      });
-
-      const isDeployed = await account?.isDeployed();
-      return !!isDeployed;
+    // Initialize blockchain if not already initialized
+    if (!wallet) await initBlockchain(txParams.chainId);
+    if (!wallet || !provider) {
+      throw new Error("Wallet or provider not initialized");
     }
 
-    isDeploying = true;
-
-    if (!account) {
-      console.log("No account to deploy, initializing first...");
-      await initClients();
-      if (!account) {
-        console.error("Failed to initialize account for deployment");
-        isDeploying = false;
-        return false;
-      }
+    // Use provided chainId or current chainId
+    const chainId = txParams.chainId || currentChainId;
+    if (!chainId) {
+      throw new Error("Chain ID not specified");
     }
 
-    console.log("Checking if account is already deployed...");
-    const alreadyDeployed = await account.isDeployed();
-    if (alreadyDeployed) {
-      console.log("Account is already deployed:", account.address);
-      isDeploying = false;
-      return true;
-    }
+    // Get network config for the chain
+    const networkConfig = getConfig(chainId);
 
-    console.log("Deploying account via UserOperation...");
+    // Add chainId to transaction parameters
+    txParams.chainId = chainId;
 
-    // Get the minimum deployment funds required from Pimlico
-    const apiKey = process.env.NEXT_PUBLIC_PIMLICO_API_KEY;
-    if (!apiKey) {
-      console.error("Missing PIMLICO_API_KEY for deployment");
-      isDeploying = false;
-      return false;
-    }
+    // Check if user has enough balance for transaction
+    const balance = await provider.getBalance(wallet.address);
+    const gasLimit = txParams.gasLimit || ethers.BigNumber.from(100000); // Default gas limit
+    const gasPrice = txParams.gasPrice || (await provider.getGasPrice());
+    const value = txParams.value || ethers.BigNumber.from(0);
 
-    // Try direct deployment with initCode
-    try {
-      console.log("Account address:", account.address);
+    const estimatedGasCost = gasLimit.mul(gasPrice);
+    const totalCost = estimatedGasCost.add(value);
 
-      // Set gas price - must be identical for maxFeePerGas and maxPriorityFeePerGas on Celo
-      const deploymentGasPrice = BigInt(50000000000); // 50 Gwei
-
-      // Send the deployment transaction with a lot of gas to ensure it gets included
-      const deployHash = await smartAccountClient.sendTransaction({
-        to: account.address,
-        value: BigInt(0),
-        data: "0x",
-        maxFeePerGas: deploymentGasPrice,
-        maxPriorityFeePerGas: deploymentGasPrice, // Same as maxFeePerGas for Celo
-      });
-
-      console.log("Deployment transaction hash:", deployHash);
-
-      // Wait for the transaction receipt with a long timeout
-      console.log("Waiting for deployment transaction receipt...");
-      try {
-        console.log("Waiting up to 3 minutes for receipt...");
-        const txReceipt = await publicClient.waitForTransactionReceipt({
-          hash: deployHash,
-          timeout: 180000, // 3 minute timeout
-        });
-        console.log(
-          "Deployment transaction receipt:",
-          JSON.stringify(txReceipt)
-        );
-      } catch (waitError) {
-        console.log(
-          `Receipt wait error: ${
-            waitError instanceof Error ? waitError.message : "Unknown error"
-          }`
-        );
-        console.log("Continuing without receipt confirmation...");
-      }
-
-      // Add long delay to ensure deployment completes even if receipt isn't returned
-      console.log("Waiting 30 seconds for deployment to finalize...");
-      await new Promise((resolve) => setTimeout(resolve, 30000)); // 30 seconds
-
-      // Keep checking deployment status
-      let deploymentConfirmed = false;
-      let attempts = 0;
-
-      while (!deploymentConfirmed && attempts < 5) {
-        attempts++;
-        console.log(`Deployment verify attempt ${attempts}...`);
-
-        try {
-          const isNowDeployed = await account.isDeployed();
-          if (isNowDeployed) {
-            deploymentConfirmed = true;
-            console.log("Account successfully deployed!");
-            break;
-          } else {
-            console.log("Account still not deployed, waiting...");
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-          }
-        } catch (error) {
-          console.error("Error checking deployment status:", error);
-        }
-      }
-
-      // Make a final check
-      const finalDeploymentStatus = await account.isDeployed();
-      console.log("Final deployment status:", finalDeploymentStatus);
-
-      isDeploying = false;
-      return finalDeploymentStatus;
-    } catch (error) {
-      console.error("Error in deployment transaction:", error);
-      isDeploying = false;
-      return false;
-    }
-  } catch (error) {
-    console.error("Unexpected error in deploySmartAccount:", error);
-    isDeploying = false;
-    return false;
-  }
-};
-
-// Helper function to send transactions
-async function sendSmartAccountTransaction(
-  to: string,
-  data: string,
-  value: bigint = BigInt(0)
-) {
-  // Make sure account is initialized and deployed
-  if (!account || !smartAccountClient) {
-    console.log("Account or client not initialized, initializing...");
-    await initClients();
-    if (!account || !smartAccountClient) {
-      throw new Error("Failed to initialize account or client");
-    }
-  }
-
-  // Check deployment status
-  const isDeployed = await account.isDeployed();
-  console.log("Is account deployed before transaction:", isDeployed);
-
-  // Try deployment a maximum of 2 times before failing
-  let deploymentAttempts = 0;
-  const maxDeploymentAttempts = 2;
-
-  while (!isDeployed && deploymentAttempts < maxDeploymentAttempts) {
-    deploymentAttempts++;
-    console.log(
-      `Deployment attempt ${deploymentAttempts}/${maxDeploymentAttempts}...`
-    );
-
-    console.log("Account not deployed, deploying...");
-    const deploySuccess = await deploySmartAccount();
-
-    if (deploySuccess) {
-      console.log(
-        "Account successfully deployed on attempt",
-        deploymentAttempts
+    if (balance.lt(totalCost)) {
+      console.error(
+        `Insufficient balance: ${ethers.utils.formatEther(
+          balance
+        )} < ${ethers.utils.formatEther(totalCost)}`
       );
-      break;
-    } else {
-      console.log(`Deployment attempt ${deploymentAttempts} failed`);
-
-      if (deploymentAttempts >= maxDeploymentAttempts) {
-        // If we're using the Safe account implementation, we can try a fallback approach
-        // where we skip the deployment check for this transaction
-        if (
-          account.address &&
-          typeof account.signUserOperation === "function"
-        ) {
-          console.log(
-            "WARNING: Using fallback transaction method without deployment"
-          );
-
-          // Force transaction without deployment verification
-          break;
-        } else {
-          throw new Error("Failed to deploy account after multiple attempts");
-        }
-      }
-
-      // Wait before trying again
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-    }
-  }
-
-  try {
-    // Get gas price
-    const gasPrice = BigInt(3000000000); // 3 Gwei
-
-    // Set transaction parameters with identical gas price values for Celo
-    // Celo doesn't support EIP-1559 fee model, so both values must be equal
-    const transactionParams = {
-      to: to as `0x${string}`,
-      value,
-      data: data as `0x${string}`,
-      maxFeePerGas: gasPrice,
-      maxPriorityFeePerGas: gasPrice, // Same as maxFeePerGas for Celo
-    };
-
-    console.log(
-      "Sending transaction to:",
-      to,
-      "with gas price:",
-      gasPrice.toString()
-    );
-
-    // Attempt to send the transaction with paymaster sponsorship
-    let txHash;
-    try {
-      txHash = await smartAccountClient.sendTransaction(transactionParams);
-    } catch (err) {
-      // If we get error about factory/factoryData for already deployed accounts
-      if (
-        err instanceof Error &&
-        err.message.includes("Smart Account has already been deployed") &&
-        err.message.includes("Remove the following properties")
-      ) {
-        console.log(
-          "Handling 'already deployed' error by recreating the account instance"
-        );
-
-        // Force account to refresh its deployment status
-        if ("prepareForDeployment" in account) {
-          // Mark account as deployed directly if it has the method
-          console.log("Setting account as deployed");
-          account.isDeployed = async () => true;
-        }
-
-        // Retry without factory data
-        console.log("Retrying transaction without factory data");
-        txHash = await smartAccountClient.sendTransaction(transactionParams);
-      } else if (
-        err instanceof Error &&
-        err.message.includes("Smart Account does not have sufficient funds")
-      ) {
-        // If we get insufficient funds error, try with higher gas price
-        console.log(
-          "Insufficient funds error, using paymaster to sponsor gas..."
-        );
-
-        // Try with higher gas price (but still identical values)
-        const higherGasPrice = BigInt(5000000000); // 5 Gwei
-        const newParams = {
-          ...transactionParams,
-          maxFeePerGas: higherGasPrice,
-          maxPriorityFeePerGas: higherGasPrice,
-        };
-
-        console.log(
-          "Retrying with paymaster sponsorship and higher gas:",
-          higherGasPrice.toString()
-        );
-        txHash = await smartAccountClient.sendTransaction(newParams);
-      } else {
-        // Re-throw any other errors
-        throw err;
-      }
+      return {
+        success: false,
+        error: "Insufficient funds",
+        details: {
+          balance: ethers.utils.formatEther(balance),
+          required: ethers.utils.formatEther(totalCost),
+          missingAmount: ethers.utils.formatEther(totalCost.sub(balance)),
+          chain: networkConfig.name,
+        },
+      };
     }
 
-    console.log("Transaction hash:", txHash);
-    return txHash;
-  } catch (error) {
-    console.error("Error sending transaction:", error);
-    throw error;
-  }
-}
+    const tx = await wallet.sendTransaction(txParams);
+    console.log("Transaction sent:", tx.hash);
 
-// Approve function
-export const approve = async (req: {
-  body: {
-    contractAddress: string;
-    spenderAddress: string;
-    allowanceAmount: string;
-    forceDeployed?: boolean;
-  };
-}) => {
-  try {
-    const { contractAddress, spenderAddress, allowanceAmount, forceDeployed } =
-      req.body;
-    console.log("Approve request:", req.body);
-
-    if (!contractAddress || !spenderAddress || !allowanceAmount) {
-      throw new Error("Missing required parameters");
-    }
-
-    // Initialize clients if needed
-    if (!account || !smartAccountClient) {
-      console.log("Initializing clients");
-      await initClients();
-    }
-
-    if (!account) {
-      throw new Error("Account not initialized");
-    }
-
-    console.log("Using smart account:", account.address);
-
-    // If forceDeployed is set, mark the account as deployed directly
-    if (forceDeployed && account.isDeployed) {
-      console.log("Force marking account as deployed");
-      account.isDeployed = async () => true;
-    }
-
-    // Encode transaction data
-    const data = encodeFunctionData({
-      abi: erc20ABI,
-      functionName: "approve",
-      args: [spenderAddress, allowanceAmount],
-    });
-
-    // Use our helper function to send the transaction
-    const txHash = await sendSmartAccountTransaction(contractAddress, data);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-    });
-
+    const receipt = await tx.wait();
     return {
-      transactionHash: txHash,
+      success: true,
+      transactionHash: tx.hash,
       receipt,
-      smartAccountAddress: account.address,
     };
-  } catch (error) {
-    console.error("Error in approve:", error);
-    throw error;
-  }
-};
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error signing transaction:", errorMessage);
 
-// SBT mint function
-export const sbtmint = async () => {
-  try {
-    // Initialize clients if needed
-    if (!account) {
-      await initClients();
+    // Get the network config for error details
+    const chainId = txParams.chainId || currentChainId;
+    const networkConfig = chainId ? getConfig(chainId) : undefined;
+
+    // Improved error handling
+    if (errorMessage.includes("insufficient funds")) {
+      return {
+        success: false,
+        error: "Insufficient funds for transaction",
+        details: {
+          message: `Please fund your account with ${
+            networkConfig?.nativeCurrency.symbol || "native"
+          } tokens`,
+          address: wallet?.address,
+          chain: networkConfig?.name,
+        },
+      };
     }
-
-    // Contract and API configuration
-    const contractAddress =
-      process.env.NEXT_PUBLIC_CELO_TOKEN_ADDRESS ||
-      "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5";
-    const spenderAddress =
-      process.env.NEXT_PUBLIC_LENDING_POOL_ADDRESS ||
-      "0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D";
-    const allowanceAmount = "100000";
-
-    // Encode the data for transaction
-    const data = encodeFunctionData({
-      abi: erc20ABI,
-      functionName: "approve",
-      args: [spenderAddress, allowanceAmount],
-    });
-
-    // Use helper function to send the transaction
-    const txHash = await sendSmartAccountTransaction(contractAddress, data);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-    });
 
     return {
-      transactionHash: txHash,
-      receipt,
-      smartAccountAddress: account?.address,
+      success: false,
+      error: errorMessage,
     };
-  } catch (error) {
-    console.error("Error in sbtmint:", error);
-    throw error;
   }
 };
 
-// Get allowance function
-export const getAllowance = async (req: {
-  body: {
-    contractAddress: string;
-    ownerAddress: string;
-    spenderAddress: string;
-  };
-}) => {
-  try {
-    const { contractAddress, ownerAddress, spenderAddress } = req.body;
-    console.log("Get allowance request:", req.body);
+/**
+ * Create a contract instance
+ * @param {string} address Contract address
+ * @param {ethers.ContractInterface} abi Contract ABI
+ * @param {boolean} readOnly Whether to use provider (read-only) or wallet (read-write)
+ * @param {number} chainId Chain ID for the network to use
+ * @returns {Promise<ethers.Contract>} Contract instance
+ */
+const getContract = async (
+  address: string,
+  abi: ethers.ContractInterface,
+  readOnly = false,
+  chainId?: number
+): Promise<ethers.Contract> => {
+  // Initialize blockchain if not already initialized, using specified chainId
+  if (!provider || chainId !== currentChainId) await initBlockchain(chainId);
 
-    if (!contractAddress || !ownerAddress || !spenderAddress) {
-      throw new Error("Missing required parameters");
-    }
-
-    const allowance = await publicClient.readContract({
-      address: contractAddress as `0x${string}`,
-      abi: erc20ABI,
-      functionName: "allowance",
-      args: [ownerAddress, spenderAddress],
-    });
-
-    return {
-      allowance: allowance?.toString() || "0",
-    };
-  } catch (error) {
-    console.error("Error in getAllowance:", error);
-    throw error;
+  if (!provider || (!readOnly && !wallet)) {
+    throw new Error("Provider or wallet not initialized");
   }
+
+  return new ethers.Contract(address, abi, readOnly ? provider : wallet);
 };
 
-// Deposit function
-export const deposit = async (req: {
-  body: {
-    contractAddress: string;
-    tokenAddress: string;
-    amount: string;
-  };
-}) => {
-  try {
-    const { contractAddress, tokenAddress, amount } = req.body;
-    console.log("Deposit request:", req.body);
-
-    if (!contractAddress || !tokenAddress || !amount) {
-      throw new Error("Missing required parameters");
-    }
-
-    // Initialize clients if needed
-    if (!account) {
-      await initClients();
-    }
-
-    // Encode the data for transaction
-    const data = encodeFunctionData({
-      abi: lendingABI,
-      functionName: "deposit",
-      args: [tokenAddress, amount],
-    });
-
-    // Use helper function to send the transaction
-    const txHash = await sendSmartAccountTransaction(contractAddress, data);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-    });
-
-    return {
-      transactionHash: txHash,
-      receipt,
-      smartAccountAddress: account?.address,
-    };
-  } catch (error) {
-    console.error("Error in deposit:", error);
-    throw error;
-  }
+/**
+ * Format units to human-readable form
+ * @param {string|BigNumber} value Value to format
+ * @param {number} decimals Number of decimals
+ * @returns {string} Formatted value
+ */
+const formatUnits = (value: string | BigNumber, decimals = 18): string => {
+  return ethers.utils.formatUnits(value, decimals);
 };
 
-// Withdraw function
-export const withdraw = async (req: {
-  body: {
-    contractAddress: string;
-    tokenAddress: string;
-    amount: string;
-  };
-}) => {
-  try {
-    const { contractAddress, tokenAddress, amount } = req.body;
-    console.log("Withdraw request:", req.body);
-
-    if (!contractAddress || !tokenAddress || !amount) {
-      throw new Error("Missing required parameters");
-    }
-
-    // Initialize clients if needed
-    if (!account) {
-      await initClients();
-    }
-
-    // Encode the data for transaction
-    const data = encodeFunctionData({
-      abi: lendingABI,
-      functionName: "withdraw",
-      args: [tokenAddress, amount],
-    });
-
-    // Use helper function to send the transaction
-    const txHash = await sendSmartAccountTransaction(contractAddress, data);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-    });
-
-    return {
-      transactionHash: txHash,
-      receipt,
-      smartAccountAddress: account?.address,
-    };
-  } catch (error) {
-    console.error("Error in withdraw:", error);
-    throw error;
-  }
+/**
+ * Parse units from human-readable form to wei
+ * @param {string} value Value to parse
+ * @param {number} decimals Number of decimals
+ * @returns {BigNumber} Parsed value
+ */
+const parseUnits = (value: string | number, decimals = 18): BigNumber => {
+  return ethers.utils.parseUnits(value.toString(), decimals);
 };
 
-// Borrow function
-export const borrow = async (req: {
-  body: {
-    contractAddress: string;
-    tokenAddress: string;
-    amount: string;
-  };
-}) => {
-  try {
-    const { contractAddress, tokenAddress, amount } = req.body;
-    console.log("Borrow request:", req.body);
-
-    if (!contractAddress || !tokenAddress || !amount) {
-      throw new Error("Missing required parameters");
-    }
-
-    // Initialize clients if needed
-    if (!account) {
-      await initClients();
-    }
-
-    // Encode the data for transaction
-    const data = encodeFunctionData({
-      abi: lendingABI,
-      functionName: "borrow",
-      args: [tokenAddress, amount],
-    });
-
-    // Use helper function to send the transaction
-    const txHash = await sendSmartAccountTransaction(contractAddress, data);
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-    });
-
-    return {
-      transactionHash: txHash,
-      receipt,
-      smartAccountAddress: account?.address,
-    };
-  } catch (error) {
-    console.error("Error in borrow:", error);
-    throw error;
-  }
+const approve = async (
+  req: ApproveRequest,
+  chainId?: number
+): Promise<TransactionResult> => {
+  const { contractAddress, spenderAddress, allowanceAmount } = req.body;
+  const contract = await getContract(
+    contractAddress,
+    MintTokenAbi,
+    false,
+    chainId
+  );
+  const tx = await contract.approve(spenderAddress, allowanceAmount);
+  return signAndSendTransaction(tx);
 };
 
-// List smart accounts function
-export const listSmartAccounts = async () => {
-  try {
-    // Initialize clients if needed
-    if (!account) {
-      await initClients();
-    }
-
-    const isDeployed = account ? await account.isDeployed() : false;
-
-    return [
-      {
-        address:
-          account?.address || "0x0000000000000000000000000000000000000000",
-        isDeployed,
-        createdAt: new Date(),
-        lastUsedAt: new Date(),
-      },
-    ];
-  } catch (error) {
-    console.error("Error listing smart accounts:", error);
-    throw error;
-  }
+const deposit = async (
+  req: DepositRequest,
+  chainId?: number
+): Promise<TransactionResult> => {
+  const { contractAddress, token, amount } = req.body;
+  const contract = await getContract(
+    contractAddress,
+    LendingPoolAbi,
+    false,
+    chainId
+  );
+  const tx = await contract.deposit(token, amount);
+  return signAndSendTransaction(tx);
 };
 
-// Function to check if a smart account is deployed
-export async function isSmartAccountDeployed(
-  address: string
-): Promise<boolean> {
-  try {
-    const code = await publicClient.getBytecode({
-      address: address as `0x${string}`,
-    });
-    return code !== undefined && code !== "0x";
-  } catch (error) {
-    console.error("Error checking if smart account is deployed:", error);
-    return false;
-  }
-}
+const withdraw = async (
+  req: WithdrawRequest,
+  chainId?: number
+): Promise<TransactionResult> => {
+  const { contractAddress, token, amount } = req.body;
+  const contract = await getContract(
+    contractAddress,
+    LendingPoolAbi,
+    false,
+    chainId
+  );
+  const tx = await contract.withdraw(token, amount);
+  return signAndSendTransaction(tx);
+};
+
+const borrow = async (
+  req: BorrowRequest,
+  chainId?: number
+): Promise<TransactionResult> => {
+  const { contractAddress, token, amount } = req.body;
+  const contract = await getContract(
+    contractAddress,
+    LendingPoolAbi,
+    false,
+    chainId
+  );
+
+  const tx = await contract.borrow(token, amount);
+  return signAndSendTransaction(tx);
+};
+
+const repay = async (
+  req: RepayRequest,
+  chainId?: number
+): Promise<TransactionResult> => {
+  const { contractAddress, token, amount } = req.body;
+  const contract = await getContract(
+    contractAddress,
+    LendingPoolAbi,
+    false,
+    chainId
+  );
+  const tx = await contract.repay(token, amount);
+  return signAndSendTransaction(tx);
+};
+
+const getTokenPrice = async (
+  token: string,
+  chainId?: number,
+  contractAddress?: string
+): Promise<TransactionResult> => {
+  const contract = await getContract(
+    contractAddress as string,
+    PriceOracleAbi,
+    true,
+    chainId
+  );
+
+  console.log("contract", contract);
+  const price = await contract.getTokenPrice(token);
+  return price;
+};
+
+export {
+  initBlockchain,
+  signAndSendTransaction,
+  getContract,
+  formatUnits,
+  parseUnits,
+  approve,
+  getConfig,
+  NETWORK_CONFIGS,
+  deposit,
+  withdraw,
+  borrow,
+  repay,
+  getTokenPrice,
+};
