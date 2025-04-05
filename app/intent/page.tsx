@@ -11,7 +11,6 @@ import * as React from "react";
 import { IntentHistory } from "@/components/intent/intent-history";
 import { IntentExecutionPlan } from "@/lib/services/intent-service";
 import GlitchText from "@/components/animations/glitch";
-import TypewriterEffect from "@/components/animations/TypewriterEffect";
 import Link from "next/link";
 
 const StandaloneFormLabel = ({
@@ -72,10 +71,10 @@ export default function IntentPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          intent, 
+        body: JSON.stringify({
+          intent,
           chainId,
-          userAddress: address
+          userAddress: address,
         }),
       });
 
