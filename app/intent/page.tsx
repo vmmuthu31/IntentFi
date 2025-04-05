@@ -76,7 +76,9 @@ export default function IntentPage() {
           toast.warning("KYC verification required for this operation", {
             action: {
               label: "Verify Now",
-              onClick: () => (window.location.href = "/verify"),
+              onClick: () =>
+                (window.location.href =
+                  data.data.steps[0].redirectUrl || "/verify?redirect=/intent"),
             },
             duration: 10000,
           });

@@ -15,7 +15,13 @@ const SelfQRcodeWrapper = dynamic(
   { ssr: false }
 );
 
-export default function VerifyPage() {
+export default function VerifyPage({
+  onVerificationComplete,
+  redirectUrl = "/intent",
+}: {
+  onVerificationComplete?: () => void;
+  redirectUrl?: string;
+}) {
   const { address, isConnected } = useAccount();
   const [verificationStatus, setVerificationStatus] = useState("notStarted");
   const [loading, setLoading] = useState(false);
@@ -54,10 +60,118 @@ export default function VerifyPage() {
 
   const handleVerificationSuccess = () => {
     setLoading(true);
-    setTimeout(() => {
-      setVerificationStatus("verified");
-      setLoading(false);
-    }, 1000);
+
+    // First, update our verification status in the database
+    if (address) {
+      // Add a timestamp parameter to avoid caching issues
+      const timestamp = new Date().getTime();
+      fetch(`/api/user/verification?_t=${timestamp}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store",
+        },
+        body: JSON.stringify({
+          address: address,
+          isVerified: true,
+          verificationData: {
+            timestamp: new Date().toISOString(),
+            source: "self_protocol",
+            // Add verification metadata
+            method: "selfid",
+            selfVerificationCount: 1,
+            verifierContract: identityVerifierAddress,
+          },
+        }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Network response error: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Verification status updated:", data);
+          if (data.success) {
+            // Force add the address to the verified list to ensure it works immediately
+            // This is a backup in case MongoDB has issues
+            setTimeout(() => {
+              // Double check the verification after a delay
+              fetch(
+                `/api/user/verification?address=${address}&_t=${new Date().getTime()}`,
+                {
+                  headers: {
+                    "Cache-Control": "no-cache, no-store",
+                  },
+                }
+              )
+                .then((r) => r.json())
+                .then((checkData) => {
+                  console.log("Verification double-check:", checkData);
+                  if (!checkData.isVerified) {
+                    console.warn(
+                      "Verification status not properly saved - retrying"
+                    );
+                    // Try one more time
+                    fetch(`/api/user/verification`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "Cache-Control": "no-cache, no-store",
+                      },
+                      body: JSON.stringify({
+                        address: address,
+                        isVerified: true,
+                        verificationData: {
+                          timestamp: new Date().toISOString(),
+                          source: "self_protocol_retry",
+                        },
+                      }),
+                    });
+                  }
+                })
+                .catch((err) =>
+                  console.error("Error in verification double-check:", err)
+                );
+            }, 1000);
+
+            setVerificationStatus("verified");
+            // Call the onVerificationComplete callback if provided
+            if (onVerificationComplete) {
+              onVerificationComplete();
+            }
+          } else {
+            toast.error("Failed to store verification status");
+          }
+        })
+        .catch((error) => {
+          console.error("Error updating verification status:", error);
+          toast.error("Error saving verification status");
+
+          // Continue anyway in development
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "Development mode - continuing despite verification storage error"
+            );
+            setVerificationStatus("verified");
+            if (onVerificationComplete) {
+              onVerificationComplete();
+            }
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      // If no address (shouldn't happen), just update UI
+      setTimeout(() => {
+        setVerificationStatus("verified");
+        setLoading(false);
+        if (onVerificationComplete) {
+          onVerificationComplete();
+        }
+      }, 1000);
+    }
   };
 
   const fadeIn = {
@@ -593,7 +707,7 @@ export default function VerifyPage() {
                   </div>
 
                   <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                    <Link href="/intent" className="flex-1">
+                    <Link href={redirectUrl} className="flex-1">
                       <Button className="w-full bg-gradient-to-r from-orange-600 cursor-pointer to-orange-500 hover:from-orange-700 hover:to-orange-600 py-6 text-lg">
                         Go to IntentFi
                       </Button>
