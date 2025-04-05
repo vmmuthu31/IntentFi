@@ -65,7 +65,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen
-        pt-10 custom-gradient mx-10`}
+        custom-gradient mx-10`}
       >
         <ThemeProvider
           attribute="class"
@@ -75,6 +75,7 @@ export default function RootLayout({
         >
           <WalletProvider>
             <div className="relative flex min-h-screen flex-col">
+              <div className="h-10"></div>
               <SiteHeader />
               <main className="flex-1">{children}</main>
             </div>
