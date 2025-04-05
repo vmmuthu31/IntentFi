@@ -16,7 +16,7 @@ const mainNavItems = [
   },
   {
     title: "Identity",
-    href: "/identity",
+    href: "/verify",
   },
   {
     title: "Analytics",

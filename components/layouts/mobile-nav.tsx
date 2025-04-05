@@ -22,7 +22,7 @@ const navItems = [
   },
   {
     title: "Identity",
-    href: "/identity",
+    href: "/verify",
     icon: "🔒",
   },
   {
