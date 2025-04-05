@@ -43,12 +43,16 @@ export default function Home() {
               </p>
 
               <div className="flex space-x-6">
-                <button className="bg-[#FA4C15] text-white px-10 py-4 rounded hover:bg-opacity-90 text-lg">
+              <Link href="/intent">
+                <button className="bg-[#FA4C15] hover:cursor-pointer text-white px-10 py-4 rounded hover:bg-opacity-90 text-lg">
                   Launch App
                 </button>
-                <button className="border border-white text-white px-10 py-4 rounded hover:bg-gray-900 text-lg">
+              </Link>
+              <Link href="/verify">
+                <button className="border border-white hover:cursor-pointer text-white px-10 py-4 rounded hover:bg-gray-900 text-lg">
                   Verify Identity
                 </button>
+              </Link>
               </div>
 
               <p className="text-gray-500 mt-10 text-lg">
