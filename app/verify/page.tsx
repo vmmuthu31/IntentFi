@@ -8,7 +8,7 @@ const VerifyPageClient = dynamic(
 
 function page() {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen bg-black text-white">
       <VerifyPageClient />
     </div>
   );
