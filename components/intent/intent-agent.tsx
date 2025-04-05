@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import {
   Loader2,
   Send,
@@ -147,17 +147,53 @@ const SAMPLE_TOKENS: Record<string, Token[]> = {
   ],
 };
 
-// Example intents to display as suggestions
-const EXAMPLE_INTENTS = [
-  "Deposit 10 USDC on Celo",
-  "Borrow 10 rBTC on Rootstock",
-  "Check my token balances on Celo network",
-  "Provide liquidity with 5 CELO and 10 USDC",
-  "Find highest yield for stablecoins across chains",
-  "Bridge my USDC from Ethereum to Polygon",
-  "Convert 50% of my ETH to stablecoins",
-  "Set up dollar cost averaging for ETH",
-];
+// Update the example intents with chain-specific versions that match our functions
+const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
+  // Celo Alfajores examples
+  "44787": [
+    "Deposit 10 USDC on Celo",
+    "Withdraw 5 CELO from lending pool",
+    "Borrow 100 USDT on Celo",
+    "Repay 50 USDC loan on Celo",
+    "Check my CELO balance",
+    "Stake 10 CELO in pool 4",
+    "Unstake 5 CELO from pool 4",
+    "Get pool information on Celo",
+  ],
+  // Rootstock examples
+  "31": [
+    "Deposit 0.1 RBTC on Rootstock",
+    "Withdraw 5 USDT from Rootstock",
+    "Borrow 10 USDT on Rootstock",
+    "Repay 5 RBTC loan on Rootstock",
+    "Check my RBTC balance",
+    "Stake 1 RBTC in pool 4",
+    "Unstake 0.5 RBTC from pool 4",
+    "Get pool information on Rootstock",
+  ],
+  // Saga IFI examples
+  "2743859179913000": [
+    "Deposit 10 USDC on Saga",
+    "Withdraw 5 IFI from lending pool",
+    "Borrow 20 USDT on Saga",
+    "Repay 10 IFI loan",
+    "Check my IFI balance",
+    "Stake 5 IFI in pool 4",
+    "Unstake 2 IFI from pool 4",
+    "Get pool information on Saga",
+  ],
+  // Default examples for any other chain
+  default: [
+    "Deposit 10 USDC",
+    "Withdraw 5 ETH from lending pool",
+    "Borrow 100 USDT",
+    "Repay 50 USDC loan",
+    "Check my token balance",
+    "Stake 10 tokens in pool 4",
+    "Unstake 5 tokens from pool 4",
+    "Get pool information",
+  ],
+};
 
 // Updated interfaces to include function responses
 interface IntentPattern {
@@ -345,25 +381,20 @@ export default function IntentAgent({
     {
       role: "assistant",
       content:
-        "Hello! I'm your IntentFi Agent. I can help you execute DeFi strategies, bridge assets, find yield opportunities and more. How can I assist you today?",
+        "Hello! I'm your IntentFi Agent. I can help you execute DeFi strategies on your current chain. What would you like to do today?",
       timestamp: new Date(),
       actions: [
         { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
-        {
-          label: "Highest yield options",
-          action: "SUGGEST_INTENT",
-          intent: "Find the highest yield for my assets across all chains",
-        },
-        {
-          label: "See example intents",
-          action: "SHOW_EXAMPLES",
-        },
+        { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+        { label: "See example intents", action: "SHOW_EXAMPLES" },
       ],
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isConnected } = useAccount();
+  const chainId = useChainId();
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -385,8 +416,48 @@ export default function IntentAgent({
     }
   };
 
+  // Get chain-specific examples based on current chain
+  const getChainSpecificExamples = (): string[] => {
+    if (!chainId) return CHAIN_SPECIFIC_INTENTS.default;
+    return (
+      CHAIN_SPECIFIC_INTENTS[chainId.toString()] ||
+      CHAIN_SPECIFIC_INTENTS.default
+    );
+  };
+
+  // Get current chain name for display
+  const getCurrentChainName = (): string => {
+    if (!chainId) return "your current chain";
+
+    switch (chainId) {
+      case 44787:
+        return "Celo Alfajores";
+      case 31:
+        return "Rootstock";
+      case 2743859179913000:
+        return "Saga IFI";
+      default:
+        return `Chain ${chainId}`;
+    }
+  };
+
   const getTokensForCurrentChain = (): Token[] => {
-    return SAMPLE_TOKENS.ethereum || [];
+    // Return appropriate tokens based on the chainId
+    if (!chainId) return SAMPLE_TOKENS.ethereum || [];
+
+    switch (chainId) {
+      case 44787: // Celo Alfajores
+        return SAMPLE_TOKENS.celo || [];
+      case 31: // Rootstock
+        // Since we don't have specific Rootstock tokens in our sample data,
+        // we could show Ethereum tokens for now or create a custom set
+        return SAMPLE_TOKENS.ethereum || [];
+      case 2743859179913000: // Saga IFI
+        // For Saga, we could use arbitrum as a placeholder or create custom tokens
+        return SAMPLE_TOKENS.arbitrum || [];
+      default:
+        return SAMPLE_TOKENS.ethereum || [];
+    }
   };
 
   // Enhanced message processing to handle natural language intents directly
@@ -456,6 +527,44 @@ export default function IntentAgent({
     };
   };
 
+  const processIntent = (formattedIntent: string) => {
+    // Set processing state
+    setIsProcessing(true);
+
+    // Pass the intent to the parent component for processing
+    onCreateIntent(formattedIntent);
+
+    // Add a processing message
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: "Processing your intent... This may take a moment.",
+        timestamp: new Date(),
+        isLoading: true,
+      },
+    ]);
+
+    // Simulate processing time
+    setTimeout(() => {
+      // Replace loading message with completion message
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content:
+            "Your intent has been processed. You can view the execution plan below.",
+          timestamp: new Date(),
+          actions: [
+            { label: "Clear chat", action: "CLEAR_CHAT" },
+            { label: "Create new intent", action: "SHOW_EXAMPLES" },
+          ],
+        },
+      ]);
+      setIsProcessing(false);
+    }, 2000);
+  };
+
   const sendMessage = () => {
     if (!input.trim()) return;
 
@@ -468,57 +577,168 @@ export default function IntentAgent({
 
     setMessages((prev) => [...prev, userMessage]);
 
-    // If it's a direct, simple intent, we can pass it straight to the intent processor
+    // Pre-process the intent to check if it's a direct function call
+    const lowerIntent = input.toLowerCase();
+    let directFunctionCall = false;
+
+    // Try to match against specific function patterns with parameters
+    const depositMatch = lowerIntent.match(
+      /\bdeposit\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)/i
+    );
+    const withdrawMatch = lowerIntent.match(
+      /\bwithdraw\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)/i
+    );
+    const borrowMatch = lowerIntent.match(
+      /\bborrow\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)/i
+    );
+    const repayMatch = lowerIntent.match(
+      /\brepay\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)/i
+    );
+    const balanceMatch = lowerIntent.match(
+      /\b(?:balance|check|how\s+much)\s+(?:of\s+)?([a-zA-Z]+)/i
+    );
+    const stakeMatch = lowerIntent.match(
+      /\bstake\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+in\s+pool\s+(\d+))?/i
+    );
+    const unstakeMatch = lowerIntent.match(
+      /\bunstake\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+from\s+pool\s+(\d+))?/i
+    );
+    const poolInfoMatch = lowerIntent.match(
+      /\bpool\s+info|information|details\b/i
+    );
+
+    // Process direct function call if matched
     if (
-      input.length < 80 &&
-      !input.includes("?") &&
-      !input.includes("how") &&
-      !input.includes("what")
+      depositMatch ||
+      withdrawMatch ||
+      borrowMatch ||
+      repayMatch ||
+      balanceMatch ||
+      stakeMatch ||
+      unstakeMatch ||
+      poolInfoMatch
     ) {
-      onCreateIntent(input);
-    }
+      directFunctionCall = true;
 
-    setInput("");
-    setIsTyping(true);
+      // Create a formatted intent string that the backend will understand
+      let formattedIntent = input;
+      const chainName = getCurrentChainName();
 
-    // Add temporary typing indicator
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-        isLoading: true,
-      },
-    ]);
+      // If chain not specified in the intent, add it
+      if (!lowerIntent.includes(chainName.toLowerCase())) {
+        formattedIntent = `${input} on ${chainName}`;
+      }
 
-    // Process the response (simulating AI delay)
-    setTimeout(() => {
-      // Remove the loading message
-      setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+      // Add a confirmation message showing the function call
+      let confirmationMessage = "";
 
-      // Process the user's message
-      const { response, tokens, actions } = processMessage(userMessage.content);
+      if (depositMatch) {
+        // Ignore the full match (index 0) and use the captured groups
+        const amount = depositMatch[1];
+        const token = depositMatch[2];
+        confirmationMessage = `I'll process your request to deposit ${amount} ${token.toUpperCase()} on ${chainName}.`;
+      } else if (withdrawMatch) {
+        const amount = withdrawMatch[1];
+        const token = withdrawMatch[2];
+        confirmationMessage = `I'll process your request to withdraw ${amount} ${token.toUpperCase()} from ${chainName}.`;
+      } else if (borrowMatch) {
+        const amount = borrowMatch[1];
+        const token = borrowMatch[2];
+        confirmationMessage = `I'll process your request to borrow ${amount} ${token.toUpperCase()} on ${chainName}.`;
+      } else if (repayMatch) {
+        const amount = repayMatch[1];
+        const token = repayMatch[2];
+        confirmationMessage = `I'll process your request to repay ${amount} ${token.toUpperCase()} on ${chainName}.`;
+      } else if (balanceMatch) {
+        const token = balanceMatch[1];
+        confirmationMessage = `I'll check your ${
+          token ? token.toUpperCase() : getDefaultToken()
+        } balance on ${chainName}.`;
+      } else if (stakeMatch) {
+        const amount = stakeMatch[1];
+        const token = stakeMatch[2];
+        const poolId = stakeMatch[3] || "4";
+        confirmationMessage = `I'll process your request to stake ${amount} ${token.toUpperCase()} in pool ${poolId} on ${chainName}.`;
+      } else if (unstakeMatch) {
+        const amount = unstakeMatch[1];
+        const token = unstakeMatch[2];
+        const poolId = unstakeMatch[3] || "4";
+        confirmationMessage = `I'll process your request to unstake ${amount} ${token.toUpperCase()} from pool ${poolId} on ${chainName}.`;
+      } else if (poolInfoMatch) {
+        confirmationMessage = `I'll retrieve pool information for ${chainName}.`;
+      }
 
-      // Add the real response
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: response,
+          content: confirmationMessage,
           timestamp: new Date(),
-          tokens: tokens?.map((token) => ({
-            symbol: token.symbol,
-            balance: token.balance,
-            icon: token.icon,
-            price: token.price,
-          })),
-          actions: actions,
         },
       ]);
 
-      setIsTyping(false);
-    }, 1000);
+      // Process the intent directly
+      processIntent(formattedIntent);
+    } else {
+      // If it's a simple intent (no pattern matched), still pass it to intent processor
+      if (
+        input.length < 80 &&
+        !input.includes("?") &&
+        !input.includes("how") &&
+        !input.includes("what")
+      ) {
+        processIntent(input);
+        directFunctionCall = true;
+      }
+    }
+
+    setInput("");
+
+    // Only show the typing indicator and AI response for non-direct function calls
+    if (!directFunctionCall) {
+      setIsTyping(true);
+
+      // Add temporary typing indicator
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      // Process the response (simulating AI delay)
+      setTimeout(() => {
+        // Remove the loading message
+        setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+
+        // Process the user's message
+        const { response, tokens, actions } = processMessage(
+          userMessage.content
+        );
+
+        // Add the real response
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: response,
+            timestamp: new Date(),
+            tokens: tokens?.map((token) => ({
+              symbol: token.symbol,
+              balance: token.balance,
+              icon: token.icon,
+              price: token.price,
+            })),
+            actions: actions,
+          },
+        ]);
+
+        setIsTyping(false);
+      }, 1000);
+    }
   };
 
   // Enhanced action handling with more intent processing options
@@ -540,18 +760,23 @@ export default function IntentAgent({
             processedIntent = processedIntent.replace(/\[CHAIN\]/g, "Ethereum");
           }
 
-          onCreateIntent(processedIntent);
-
           // Add a confirmation message
           setMessages((prev) => [
             ...prev,
             {
               role: "assistant",
-              content: `I've created an intent for you: "${processedIntent}"\n\nClick "Process Intent" to execute this strategy.`,
+              content: `Processing intent: "${processedIntent}"`,
               timestamp: new Date(),
             },
           ]);
+
+          // Process the intent directly
+          processIntent(processedIntent);
         }
+        break;
+
+      case "CLEAR_CHAT":
+        handleClearChat();
         break;
 
       case "SHOW_PORTFOLIO":
@@ -597,9 +822,9 @@ export default function IntentAgent({
           ...prev,
           {
             role: "assistant",
-            content: "Here are some example intents you can try:",
+            content: `Here are some example intents you can try on ${getCurrentChainName()}:`,
             timestamp: new Date(),
-            actions: EXAMPLE_INTENTS.map((example) => ({
+            actions: getChainSpecificExamples().map((example) => ({
               label: example,
               action: "DIRECT_INTENT",
               intent: example,
@@ -640,6 +865,144 @@ export default function IntentAgent({
             ],
           },
         ]);
+        break;
+
+      case "SHOW_FUNCTIONS":
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Here are the DeFi functions available on ${getCurrentChainName()}:`,
+            timestamp: new Date(),
+            actions: [
+              {
+                label: "Deposit tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "deposit",
+              },
+              {
+                label: "Withdraw tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "withdraw",
+              },
+              {
+                label: "Borrow tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "borrow",
+              },
+              {
+                label: "Repay loans",
+                action: "EXPLAIN_FUNCTION",
+                intent: "repay",
+              },
+              {
+                label: "Check balances",
+                action: "EXPLAIN_FUNCTION",
+                intent: "balanceof",
+              },
+              {
+                label: "Stake tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "stake",
+              },
+              {
+                label: "Unstake tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "unstake",
+              },
+              {
+                label: "View pool info",
+                action: "EXPLAIN_FUNCTION",
+                intent: "getpoolinformation",
+              },
+            ],
+          },
+        ]);
+        break;
+
+      case "EXPLAIN_FUNCTION":
+        if (intent) {
+          let explanation = "";
+          let examples: string[] = [];
+
+          switch (intent) {
+            case "deposit":
+              explanation =
+                "Deposit your tokens into a lending pool to earn interest.";
+              examples = [
+                `Deposit 10 USDC on ${getCurrentChainName()}`,
+                `Deposit 5 ${getDefaultToken()} into lending pool`,
+              ];
+              break;
+            case "withdraw":
+              explanation =
+                "Withdraw your deposited tokens from a lending pool.";
+              examples = [
+                `Withdraw 5 ${getDefaultToken()} from ${getCurrentChainName()}`,
+                `Take out 10 USDC from lending pool`,
+              ];
+              break;
+            case "borrow":
+              explanation = "Borrow tokens against your deposited collateral.";
+              examples = [
+                `Borrow 20 USDT on ${getCurrentChainName()}`,
+                `Take a loan of 5 ${getDefaultToken()}`,
+              ];
+              break;
+            case "repay":
+              explanation = "Repay your borrowed tokens.";
+              examples = [
+                `Repay 10 USDT loan on ${getCurrentChainName()}`,
+                `Pay back 5 ${getDefaultToken()} debt`,
+              ];
+              break;
+            case "balanceof":
+              explanation = "Check your token balance.";
+              examples = [
+                `Check my ${getDefaultToken()} balance`,
+                `How much USDC do I have?`,
+              ];
+              break;
+            case "stake":
+              explanation = "Stake your tokens to earn staking rewards.";
+              examples = [
+                `Stake 10 ${getDefaultToken()} in pool 4`,
+                `Stake 5 USDC`,
+              ];
+              break;
+            case "unstake":
+              explanation = "Unstake your tokens from staking pools.";
+              examples = [
+                `Unstake 5 ${getDefaultToken()} from pool 4`,
+                `Withdraw my staked USDC`,
+              ];
+              break;
+            case "getpoolinformation":
+              explanation = "Get information about available pools.";
+              examples = [
+                `Get pool information on ${getCurrentChainName()}`,
+                `Show me available pools`,
+              ];
+              break;
+          }
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: explanation,
+              timestamp: new Date(),
+              actions: [
+                ...examples.map((example) => ({
+                  label: example,
+                  action: "DIRECT_INTENT",
+                  intent: example,
+                })),
+                { label: "Back to functions", action: "SHOW_FUNCTIONS" },
+              ],
+            },
+          ]);
+        }
         break;
 
       default:
@@ -684,17 +1047,35 @@ export default function IntentAgent({
           /\[TOKEN\]/g,
           token.symbol
         );
-        onCreateIntent(updatedIntent);
 
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `I've created an intent for your ${token.symbol}: "${updatedIntent}"\n\nClick "Process Intent" to execute this strategy.`,
+            content: `Processing intent for your ${token.symbol}: "${updatedIntent}"`,
             timestamp: new Date(),
           },
         ]);
+
+        // Process the intent directly
+        processIntent(updatedIntent);
       }
+    }
+  };
+
+  // Helper function to get default token for the current chain
+  const getDefaultToken = (): string => {
+    if (!chainId) return "ETH";
+
+    switch (chainId) {
+      case 44787:
+        return "CELO";
+      case 31:
+        return "RBTC";
+      case 2743859179913000:
+        return "IFI";
+      default:
+        return "ETH";
     }
   };
 
@@ -713,7 +1094,12 @@ export default function IntentAgent({
               IntentFi Agent
             </h3>
             <p className="text-xs text-gray-400 flex items-center">
-              {isTyping ? (
+              {isProcessing ? (
+                <span className="flex items-center gap-1">
+                  <span className="animate-pulse text-orange-500">•</span>{" "}
+                  Processing intent...
+                </span>
+              ) : isTyping ? (
                 <span className="flex items-center gap-1">
                   <span className="animate-pulse">•</span> Synthesizing
                   response...
@@ -876,17 +1262,22 @@ export default function IntentAgent({
             onKeyDown={handleKeyDown}
             placeholder="Type your intent or question... (e.g., 'Deposit 10 USDC on Celo')"
             className="min-h-11 max-h-32 bg-zinc-800/70 border-orange-900/20 rounded-xl text-white placeholder:text-gray-400 focus:ring-1 focus:ring-orange-500/30 focus:border-orange-500/50 shadow-inner transition-all duration-300"
+            disabled={isProcessing}
           />
           <Button
             onClick={sendMessage}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isProcessing}
             className={`px-3 rounded-xl ${
-              input.trim()
+              input.trim() && !isProcessing
                 ? "bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 shadow-[0_0_8px_rgba(234,88,12,0.3)] hover:shadow-[0_0_12px_rgba(234,88,12,0.4)]"
                 : "bg-zinc-700"
             } transition-all duration-300`}
           >
-            <Send className="h-5 w-5" />
+            {isProcessing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </Button>
         </div>
 

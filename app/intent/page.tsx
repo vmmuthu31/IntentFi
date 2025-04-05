@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import * as React from "react";
 import { IntentHistory } from "@/components/intent/intent-history";
@@ -12,7 +11,6 @@ import Link from "next/link";
 import IntentAgent from "@/components/intent/intent-agent";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import WalletConnect from "@/components/ui/WalletConnect";
 
 // Add a custom type that extends IntentExecutionPlan
 type IntentResultWithMetadata = IntentExecutionPlan & {
@@ -21,8 +19,6 @@ type IntentResultWithMetadata = IntentExecutionPlan & {
 };
 
 export default function IntentPage() {
-  const [intent, setIntent] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
   const chainId = useChainId();
   const [intentResult, setIntentResult] =
     useState<IntentResultWithMetadata | null>(null);
@@ -34,25 +30,35 @@ export default function IntentPage() {
     }>
   >([]);
 
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
 
-  const handleProcessIntent = async () => {
-    if (!intent.trim()) {
+  // This function is called by the IntentAgent component
+  const handleCreateIntent = async (newIntent: string) => {
+    if (!newIntent.trim()) {
       toast.error("Please enter an intent or use the AI agent to create one");
       return;
     }
 
-    setIsProcessing(true);
+    // Initialize execution status for each step as pending
+    if (intentResult) {
+      setExecutionStatus(
+        intentResult.steps.map((_, index: number) => ({
+          step: index,
+          status: "pending",
+        }))
+      );
+    }
+
     try {
       const response = await fetch("/api/intent/process", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          intent, 
+        body: JSON.stringify({
+          intent: newIntent,
           chainId,
-          userAddress: address
+          userAddress: address,
         }),
       });
 
@@ -64,26 +70,39 @@ export default function IntentPage() {
 
       if (data.success) {
         setIntentResult(data.data);
+
+        // Set execution status for new intent steps
+        setExecutionStatus(
+          data.data.steps.map((_: unknown, index: number) => ({
+            step: index,
+            status: "complete" as const,
+            txHash: data.data.steps[index].transactionHash || undefined,
+          }))
+        );
+
         toast.success("Intent processed successfully");
       } else {
         throw new Error(data.error || "Failed to process intent");
       }
     } catch (error) {
       console.error("Error processing intent:", error);
+
+      // Set execution status to failed if error occurs
+      if (intentResult) {
+        setExecutionStatus(
+          intentResult.steps.map((_: unknown, index: number) => ({
+            step: index,
+            status: "failed" as const,
+          }))
+        );
+      }
+
       toast.error(
         error instanceof Error
           ? error.message
           : "Error processing intent. Please try again."
       );
-    } finally {
-      setIsProcessing(false);
     }
-  };
-
-  const handleClear = () => {
-    setIntent("");
-    setIntentResult(null);
-    setExecutionStatus([]);
   };
 
   return (
@@ -140,7 +159,7 @@ export default function IntentPage() {
                   <div className="relative">
                     <div className="absolute -inset-1 bg-gradient-to-r from-orange-600/10 to-orange-900/10 rounded-xl blur-xl"></div>
                     <div className="relative h-[800px]">
-                      <IntentAgent onCreateIntent={setIntent} />
+                      <IntentAgent onCreateIntent={handleCreateIntent} />
                     </div>
                   </div>
                 </div>
@@ -153,7 +172,7 @@ export default function IntentPage() {
                     className="rounded-xl border border-orange-900/20 bg-gradient-to-br from-zinc-900/50 to-black p-6 mt-6 shadow-lg"
                   >
                     <h3
-                      className="text-xl md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600 mb-6 flex items-center gap-2"
+                      className="text-xl md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600  flex items-center gap-2"
                       style={{ fontFamily: "var(--font-instrument-serif)" }}
                     >
                       <GlitchText
@@ -248,55 +267,6 @@ export default function IntentPage() {
                     </div>
                   </motion.div>
                 )}
-
-                <div className="flex justify-between mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={handleClear}
-                    className="border border-orange-900/20 bg-transparent text-gray-300 hover:bg-zinc-900 py-2.5 px-6 shadow-lg transition-all duration-300"
-                  >
-                    Clear
-                  </Button>
-
-                  {!intentResult &&
-                    (!isConnected ? (
-                      <WalletConnect />
-                    ) : (
-                      <Button
-                        onClick={handleProcessIntent}
-                        className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white py-2.5 px-8 shadow-[0_0_15px_rgba(234,88,12,0.2)] hover:shadow-[0_0_15px_rgba(234,88,12,0.4)] transition-all duration-300"
-                        disabled={isProcessing || !intent}
-                      >
-                        {isProcessing ? (
-                          <span className="flex items-center">
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Processing...
-                          </span>
-                        ) : (
-                          "Process Intent"
-                        )}
-                      </Button>
-                    ))}
-                </div>
               </div>
             </div>
           </div>
