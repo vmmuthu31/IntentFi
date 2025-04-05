@@ -131,15 +131,15 @@ Return ONLY the JSON with no other text.`,
 
     try {
       const parsedContent = JSON.parse(responseContent);
-      
+
       if (!parsedContent.steps || !Array.isArray(parsedContent.steps)) {
         throw new Error("Claude response is missing required fields");
       }
-      
+
       const step = parsedContent.steps[0];
       const chain = step.chain;
       const token = step.token;
-      const chainId = step.chainId;  // This is a string from Claude's response
+      const chainId = step.chainId; // This is a string from Claude's response
       const amount = step.amount;
       const functionName = step.function;
 
@@ -149,61 +149,64 @@ Return ONLY the JSON with no other text.`,
       console.log("Parsed chainId:", chainId);
       console.log("Parsed amount:", amount);
       console.log("Parsed functionName:", functionName);
-      
+
       let result;
 
       // Check which function to call based on the functionName
       if (functionName === "deposit") {
         // Convert chainId to a number since it appears your deposit function expects it as a number
         const numericChainId = parseInt(chainId, 10);
-        
+
         // Call the deposit function with the numeric chainId
         const depositResult = await integration.deposit({
           chainId: numericChainId,
           token,
-          amount
+          amount,
         });
-        
+
         result = {
-          success: true,
-          operation: "deposit",
-          details: {
-            chain,
-            token,
-            chainId: numericChainId,  // Use the numeric chainId in the result
-            amount,
-            transactionResult: depositResult
-          }
+          steps: [
+            {
+              description: `Deposited ${amount} ${token} on ${chain}. Transaction ${
+                depositResult.success ? "succeeded" : "failed"
+              }: ${depositResult.transactionHash}`,
+              chain,
+            },
+          ],
         };
       } else if (functionName === "withdraw") {
         const numericChainId = parseInt(chainId, 10);
         const withdrawResult = await integration.withdraw({
           chainId: numericChainId,
           token,
-          amount
+          amount,
         });
-        
+
         result = {
-          success: true,
-          operation: "withdraw",
-          details: {
-            chain,
-            token,
-            chainId: numericChainId,
-            amount,
-            transactionResult: withdrawResult
-          }
+          steps: [
+            {
+              description: `Withdrew ${amount} ${token} from ${chain}. Transaction ${
+                withdrawResult.success ? "succeeded" : "failed"
+              }: ${withdrawResult.transactionHash}`,
+              chain,
+            },
+          ],
         };
       } else {
         result = {
-          success: false,
-          error: `Unknown function: ${functionName}`
+          steps: [
+            {
+              description: `Unknown operation: ${functionName} with ${amount} ${token} on ${chain}`,
+              chain,
+            },
+          ],
         };
       }
 
       return result as IntentExecutionPlan;
     } catch (parseError) {
-      // Fallback parsing logic remains the same
+      console.error("Error parsing Claude response:", parseError);
+      throw parseError;
     }
   } catch (error) {
     console.error("Error processing with Claude:", error);

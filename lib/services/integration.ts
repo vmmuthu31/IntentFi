@@ -1491,6 +1491,32 @@ const createPool = async ({
     };
   }
 };
+
+const getPoolInformation = async ({ chainId }: { chainId: number }) => {
+  const { publicClient } = await initalizeClients({ chainId });
+  const networkConfig = Object.values(NETWORK_CONFIGS).find(
+    (config) => config.chainId === chainId
+  );
+  if (!networkConfig) {
+    throw new Error("Network config not found");
+  }
+  const contractAddress = networkConfig.contractAddresses;
+  const poolLength = await publicClient.readContract({
+    address: contractAddress.YieldFarming as `0x${string}`,
+    abi: yieldFarmingABI,
+    functionName: "poolLength",
+  });
+  console.log(`Total number of pools: ${poolLength}`);
+  for (let i = 0; i < Number(poolLength) - 1; i++) {
+    const poolInfo = await publicClient.readContract({
+      address: contractAddress.YieldFarming as `0x${string}`,
+      abi: yieldFarmingABI,
+      functionName: "getPoolInfo",
+    });
+    console.log(`Pool ${i} information:`, poolInfo);
+  }
+};
+
 export const integration = {
   formatUnits,
   parseUnits,
@@ -1504,4 +1530,5 @@ export const integration = {
   listToken,
   setTokenPrice,
   createPool,
+  getPoolInformation,
 };
