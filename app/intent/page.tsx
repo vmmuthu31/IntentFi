@@ -60,6 +60,7 @@ export default function IntentPage() {
   console.log("chainId", chainId);
   const [intentResult, setIntentResult] =
     useState<IntentResultWithMetadata | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionStatus, setExecutionStatus] = useState<
     Array<{
