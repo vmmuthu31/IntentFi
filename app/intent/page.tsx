@@ -359,7 +359,11 @@ export default function IntentPage() {
                                   <>
                                     Transaction succeeded:{" "}
                                     <a
-                                      href={`https://alfajores.celoscan.io/tx/${step.transactionHash}`}
+                                      href={step.chain === "celoAlfajores" 
+                                        ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
+                                        : step.chain === "rootstockTestnet" 
+                                          ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
+                                          : `#`}
                                       target="_blank"
                                       rel="noopener noreferrer" 
                                       className="text-blue-500 hover:underline"
