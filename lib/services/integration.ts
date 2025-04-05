@@ -9,6 +9,7 @@ import { BigNumber, ethers } from "ethers";
 import mintABI from "../../artifacts/MockToken.json";
 import lendingPoolABI from "../../artifacts/LendingPool.json";
 import priceOracleABI from "../../artifacts/PriceOracle.json";
+import yieldFarmingABI from "../../artifacts/YieldFarm.json";
 import {
   createPublicClient,
   createWalletClient,
@@ -66,7 +67,7 @@ const NETWORK_CONFIGS = {
     contractAddresses: {
       PriceOracle: "0x308b659C3B437cFB4F54573E9C3C03acEb8B5205",
       LendingPool: "0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D",
-      YieldFarm: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
+      YieldFarming: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
       DeFIPlatform: "0x649f3f2F4aB598272f2796401968ed74CBeA948c",
       Token: {
         USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
@@ -1198,7 +1199,7 @@ const listToken = async ({
 
     const txParams = {
       account,
-      to: contractAddress,
+      to: contractAddress as `0x${string}`,
       data,
       gas: gasLimit,
       gasPrice,
@@ -1279,6 +1280,167 @@ const listToken = async ({
   }
 };
 
+const createPool = async ({
+  chainId,
+  stakingToken,
+  rewardPerSecond,
+  startTime,
+  endTime,
+}: {
+  chainId: number;
+  stakingToken: string;
+  rewardPerSecond: string;
+  startTime: string;
+  endTime: string;
+}) => {
+  try {
+    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+    const chain = networkConfig.chain;
+    const contractAddress = networkConfig.contractAddresses;
+    const token =
+      networkConfig.contractAddresses.Token[
+        stakingToken as keyof typeof networkConfig.contractAddresses.Token
+      ];
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error("Private key not found");
+    }
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+
+    // First, simulate the transaction to check for errors
+    try {
+      console.log("Simulating transaction first...");
+      await publicClient.simulateContract({
+        address: contractAddress.YieldFarming as `0x${string}`,
+        abi: yieldFarmingABI,
+        functionName: "createPool",
+        args: [token, token, rewardPerSecond, startTime, endTime],
+        account: account.address,
+      });
+      console.log("Simulation successful! Transaction should succeed.");
+    } catch (error) {
+      console.error(
+        "Simulation failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      console.error(
+        "Error details:",
+        error instanceof Error && error.cause
+          ? (error.cause as Error).message
+          : "No additional details"
+      );
+
+      // Return early if simulation fails
+      return {
+        success: false,
+        error:
+          "Transaction simulation failed: " +
+          (error instanceof Error ? error.message : String(error)),
+        simulationError:
+          error instanceof Error && error.cause
+            ? (error.cause as Error).message
+            : null,
+      };
+    }
+
+    const data = encodeFunctionData({
+      abi: yieldFarmingABI,
+      functionName: "createPool",
+      args: [token, token, rewardPerSecond, startTime, endTime],
+    });
+    const gasLimit = BigInt(300000);
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
+    const txParams = {
+      account,
+      to: contractAddress.YieldFarming as `0x${string}`,
+      data,
+      gas: gasLimit,
+      gasPrice,
+      nonce: BigInt(nonce),
+      chain: chain,
+    };
+
+    console.log("Sending actual transaction...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hash = await walletClient.sendTransaction(txParams as any);
+    console.log("Transaction sent, hash:", hash);
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    const formattedReceipt = {
+      blockHash: receipt.blockHash,
+      blockNumber: receipt.blockNumber.toString(),
+      contractAddress: receipt.contractAddress,
+      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
+      from: receipt.from,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.map((log) => ({
+        ...log,
+        blockNumber: log.blockNumber.toString(),
+        logIndex: log.logIndex.toString(),
+        transactionIndex: log.transactionIndex.toString(),
+      })),
+      logsBloom: receipt.logsBloom,
+      status: receipt.status,
+      to: receipt.to,
+      transactionHash: receipt.transactionHash,
+      transactionIndex: receipt.transactionIndex.toString(),
+      type: receipt.type,
+    };
+
+    console.log("Transaction status:", receipt.status);
+
+    if (receipt.status === "reverted") {
+      console.error("Transaction reverted despite successful simulation!");
+      // Additional debug info
+      try {
+        const contractCode = await publicClient.getBytecode({
+          address: contractAddress.YieldFarming as `0x${string}`,
+        });
+        console.log("Contract exists:", !!contractCode);
+
+        // Try with different gas limit
+        console.log(
+          "This might be a gas issue. Recommend trying with higher gas limit."
+        );
+      } catch (error) {
+        console.error(
+          "Error getting additional debug info:",
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
+    return {
+      success: receipt.status !== "reverted",
+      transactionHash: hash,
+      receipt: formattedReceipt,
+    };
+  } catch (error) {
+    console.error("Create pool error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error during token listing",
+      details: error instanceof Error ? error.cause : {},
+    };
+  }
+};
 export const integration = {
   formatUnits,
   parseUnits,
@@ -1291,4 +1453,5 @@ export const integration = {
   repay,
   listToken,
   setTokenPrice,
+  createPool,
 };
