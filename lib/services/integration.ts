@@ -770,10 +770,12 @@ const withdraw = async ({
       };
     }
 
+    const tokenAmount = parseUnits(amount, 18);
+
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "withdraw",
-      args: [tokenAddress, BigInt(amount)],
+      args: [tokenAddress, tokenAmount],
     });
 
     const txParams = {
@@ -877,11 +879,13 @@ const borrow = async ({
       networkConfig.contractAddresses.Token[
         token as keyof typeof networkConfig.contractAddresses.Token
       ];
-
+    
+      const tokenAmount = parseUnits(amount, 18);
+    
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "borrow",
-      args: [tokenAddress, BigInt(amount)],
+      args: [tokenAddress, tokenAmount],
     });
 
     const gasLimit = BigInt(200000);
@@ -974,10 +978,12 @@ const repay = async ({
       ];
     const chain = networkConfig.chain;
 
+    const tokenAmount = parseUnits(amount, 18);
+
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "repay",
-      args: [tokenAddress, BigInt(amount), account.address],
+      args: [tokenAddress, tokenAmount, account.address],
     });
 
     const gasLimit = BigInt(200000);
