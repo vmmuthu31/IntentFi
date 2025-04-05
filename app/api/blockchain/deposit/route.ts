@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deposit } from "@/lib/services/integration";
+import { integration } from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await deposit({
+    const result = await integration.deposit({
       chainId,
       token,
       amount,

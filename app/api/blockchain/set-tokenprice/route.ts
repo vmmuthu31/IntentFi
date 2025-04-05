@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setTokenPrice } from "@/lib/services/integration";
+import { integration } from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await setTokenPrice({
+    const result = await integration.setTokenPrice({
       chainId,
       token,
       price,
