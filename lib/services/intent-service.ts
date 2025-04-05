@@ -109,8 +109,12 @@ const NETWORK_CONFIGS = {
   },
 };
 2. Chekck if the user has given you token name, Amount and chainId
-3. Identify the function of the intent (e.g., checking balances or deposit) if the user asks about balance of token or related query the "function" : "balanceof"
-
+3. Identify the function of the intent by looking for specific keywords:
+   - For balance checks: Use function "balanceof" if the intent contains words like "balance", "how much", "check my", "how many", "see my", "view my"
+   - For deposits: Use function "deposit" if the intent contains words like "deposit", "add", "put in", "transfer to", "send to", "invest"
+   - For withdrawals: Use function "withdraw" if the intent contains words like "withdraw", "take out", "remove", "get back", "pull out", "transfer from"
+   - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
+   - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
 Here's my intent: "${intent}"
 
 Return ONLY the JSON with no other text.`,
@@ -211,6 +215,47 @@ Return ONLY the JSON with no other text.`,
             chainId: numericChainId,
             balance: formattedBalance
           }
+        };
+      } else if (functionName === "borrow") {
+        const numericChainId = parseInt(chainId, 10);
+        const borrowResult = await integration.borrow({
+          chainId: numericChainId,
+          token,
+          amount,
+        });
+      
+        result = {
+          success: true,
+          operation: "borrow",
+          details: {
+            chain,
+            token,
+            chainId: numericChainId,
+            amount,
+            transactionResult: {
+              success: borrowResult.success,
+              transactionHash: borrowResult.transactionHash,
+              receipt: borrowResult.receipt
+            }
+          }
+        };
+      } else if (functionName == "repay") {
+        const numericChainId = parseInt(chainId, 10);
+        const repayResult = await integration.repay({
+          chainId: numericChainId,
+          token,
+          amount,
+        });
+      
+        result = {
+          steps: [
+            {
+              description: `Repaid ${amount} ${token} on ${chain}. Transaction ${
+                repayResult.success ? "succeeded" : "failed"
+              }: ${repayResult.transactionHash}`,
+              chain,
+            },
+          ],
         };
       } else {
         result = {
