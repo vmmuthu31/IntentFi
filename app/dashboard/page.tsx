@@ -6,8 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+
 import { PortfolioOverview } from "@/components/dashboard/portfolio-overview";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { CrossChainOpportunities } from "@/components/dashboard/cross-chain-opportunities";
