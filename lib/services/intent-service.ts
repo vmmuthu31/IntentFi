@@ -11,6 +11,7 @@ import { integration } from "./integration";
 export interface IntentStep {
   description: string;
   chain: string;
+  transactionHash?: string;
 }
 
 export interface IntentExecutionPlan {
@@ -66,7 +67,7 @@ async function processWithClaude(
 The JSON should have this format:
 {
   "steps": [
-    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 'N/A'"},
+    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 4" if no pool id is provided take 4 as the value},
   ],
 }
 
@@ -141,7 +142,8 @@ const NETWORK_CONFIGS = {
    - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
    - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
    - For getting pool information: Use function "getPoolInformation" if the intent contains words like "get pools", "pool information", "pool details", "pool data", or "get liquidity".
-   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to"
+   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to", "yield"
+   - For unstaking: Use function "unstake" if the intent contains words like "unstake", "stake withdraw", "remove from stake", "take out of stake"
 Here's my intent: "${intent}"
 
 Return ONLY the JSON with no other text.`,
@@ -184,109 +186,111 @@ Return ONLY the JSON with no other text.`,
       console.log("Parsed poolId:", poolId);
       let result;
 
-      // Check which function to call based on the functionName
       if (functionName == "deposit") {
-        // Convert chainId to a number since it appears your deposit function expects it as a number
         const numericChainId = parseInt(chainId, 10);
-
-        // Call the deposit function with the numeric chainId
+      
         const depositResult = await integration.deposit({
           chainId: numericChainId,
           token,
           amount,
         });
-
+      
         result = {
           steps: [
             {
-              description: `Deposited ${amount} ${token} on ${chain}. Transaction ${
-                depositResult.success ? "succeeded" : "failed"
-              }: ${depositResult.transactionHash}`,
+              description: `Deposited ${amount} ${token} on ${chain}.`,
+              transactionHash: depositResult.transactionHash,
+              status: depositResult.success ? "succeeded" : "failed",
               chain,
             },
           ],
         };
       } else if (functionName == "withdraw") {
         const numericChainId = parseInt(chainId, 10);
+      
         const withdrawResult = await integration.withdraw({
           chainId: numericChainId,
           token,
           amount,
         });
-
+      
         result = {
           steps: [
             {
-              description: `Withdrew ${amount} ${token} from ${chain}. Transaction ${
-                withdrawResult.success ? "succeeded" : "failed"
-              }: ${withdrawResult.transactionHash}`,
+              description: `Withdrew ${amount} ${token} from ${chain}.`,
+              transactionHash: withdrawResult.transactionHash,
+              status: withdrawResult.success ? "succeeded" : "failed",
               chain,
             },
           ],
         };
       } else if (functionName == "balanceof") {
         const numericChainId = parseInt(chainId, 10);
+      
         const balanceResult = await integration.getTokenBalance({
           chainId: numericChainId,
           token,
         });
-
-        // Assuming balanceResult is a BigInt or something that needs conversion
+      
         const formattedBalance = BigInt(balanceResult).toString();
-
+      
         result = {
-          success: true,
-          operation: "balanceOf",
+          steps: [
+            {
+              description: `Checked balance of ${token} on ${chain} is ${formattedBalance}.`,
+              chain,
+            },
+          ],
           details: {
-            chain,
             token,
-            chainId: numericChainId,
             balance: formattedBalance,
+            chainId: numericChainId,
           },
         };
       } else if (functionName === "borrow") {
         const numericChainId = parseInt(chainId, 10);
+      
         const borrowResult = await integration.borrow({
           chainId: numericChainId,
           token,
           amount,
         });
-
+      
         result = {
-          success: true,
-          operation: "borrow",
-          details: {
-            chain,
-            token,
-            chainId: numericChainId,
-            amount,
-            transactionResult: {
-              success: borrowResult.success,
+          steps: [
+            {
+              description: `Borrowed ${amount} ${token} on ${chain}.`,
               transactionHash: borrowResult.transactionHash,
-              receipt: borrowResult.receipt,
+              status: borrowResult.success ? "succeeded" : "failed",
+              chain,
             },
+          ],
+          details: {
+            receipt: borrowResult.receipt,
           },
         };
       } else if (functionName == "repay") {
         const numericChainId = parseInt(chainId, 10);
+      
         const repayResult = await integration.repay({
           chainId: numericChainId,
           token,
           amount,
         });
-
+      
         result = {
           steps: [
             {
-              description: `Repaid ${amount} ${token} on ${chain}. Transaction ${
-                repayResult.success ? "succeeded" : "failed"
-              }: ${repayResult.transactionHash}`,
+              description: `Repaid ${amount} ${token} on ${chain}.`,
+              transactionHash: repayResult.transactionHash,
+              status: repayResult.success ? "succeeded" : "failed",
               chain,
             },
           ],
         };
       } else if (functionName == "stake") {
         const numericChainId = parseInt(chainId, 10);
+      
         const stakeResult = await integration.stake({
           chainId: numericChainId,
           poolId,
@@ -296,15 +300,39 @@ Return ONLY the JSON with no other text.`,
         result = {
           steps: [
             {
-              description: `Staked ${amount} into pool ${poolId} on ${chain}. Transaction ${
-                stakeResult.success ? "succeeded" : "failed"
-              }: ${stakeResult.transactionHash}`,
+              description: `Staked ${amount} into pool ${poolId} on ${chain}.`,
+              transactionHash: stakeResult.transactionHash,
+              status: stakeResult.success ? "succeeded" : "failed",
               chain,
             },
           ],
         };
+      } else if (functionName == "unstake") {
+        const numericChainId = parseInt(chainId, 10);
+      
+        const unstakeResult = await integration.unstake({
+          chainId: numericChainId,
+          poolId,
+          amount,
+        });
+      
+        result = {
+          steps: [
+            {
+              description: `Unstaked ${amount} from pool ${poolId} on ${chain}.`,
+              transactionHash: unstakeResult.transactionHash,
+              status: unstakeResult.success ? "succeeded" : "failed",
+              chain,
+            },
+          ],
+          details: {
+            token: unstakeResult.token,
+            receipt: unstakeResult.receipt,
+          },
+        };
       } else if (functionName == "getpoolinformation") {
         const numericChainId = parseInt(chainId, 10);
+      
         const pools = await integration.getPoolInformation({
           chainId: numericChainId,
         });
@@ -313,21 +341,23 @@ Return ONLY the JSON with no other text.`,
           steps: [
             {
               description: `Retrieved information for ${pools.length} pools on ${chain}.`,
+              data: pools,
               chain,
             },
           ],
-          data: pools
+          data: pools,
         };
       } else {
-          result = {
-            steps: [
-              {
-                description: `Unknown operation: ${functionName} with ${amount} ${token} on ${chain}`,
-                chain,
-              },
-            ],
-          };
-        }
+        result = {
+          steps: [
+            {
+              description: `Unknown operation: ${functionName} with ${amount} ${token} on ${chain}`,
+              chain,
+            },
+          ],
+        };
+      }
+      
 
       return result as IntentExecutionPlan;
     } catch (parseError) {

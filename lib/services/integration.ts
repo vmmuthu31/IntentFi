@@ -2007,7 +2007,7 @@ const unstake = async ({
         address: contractAddress.YieldFarming as `0x${string}`,
         abi: yieldFarmingABI,
         functionName: "unstake",
-        args: [BigInt(poolId), BigInt(amount)],
+        args: [BigInt(poolId), ethers.utils.parseUnits(amount)],
         account: account.address,
       });
       console.log("Simulation successful, proceeding with actual transaction");
@@ -2027,7 +2027,7 @@ const unstake = async ({
     const unstakeData = encodeFunctionData({
       abi: yieldFarmingABI,
       functionName: "unstake",
-      args: [BigInt(poolId), BigInt(amount)],
+      args: [BigInt(poolId), ethers.utils.parseUnits(amount)],
     });
 
     const gasLimit = BigInt(300000);

@@ -41,10 +41,10 @@ const StandaloneFormDescription = ({
 );
 
 const exampleSubset = [
-  "Automatically sell 10% of my ETH when it reaches $5,000",
-  "Move all my assets from Ethereum to Polygon to reduce gas fees",
-  "Maintain a balanced portfolio that's 40% stablecoins, 30% blue-chip crypto, and 30% yield-generating positions",
-  "Invest $200 in ETH every Friday, but only when the RSI is below 40",
+  "Deposit 10 USDC on Celo",
+  "Borrow 10 rBTC on Rootstock",
+  "Check my token balances on Celo network",
+  "Provide liquidity with 5 CELO and 10 USDC ",
 ];
 
 // Add a custom type that extends IntentExecutionPlan
@@ -74,7 +74,6 @@ export default function IntentPage() {
   const handleProcessIntent = async () => {
     setIsProcessing(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const lowerIntent = intent.toLowerCase().trim();
 
       // if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
@@ -215,7 +214,6 @@ export default function IntentPage() {
     }, 100);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const executeIntent = async () => {
     if (!intentResult || !isConnected) return;
 
@@ -356,38 +354,24 @@ export default function IntentPage() {
                           <ol className="list-decimal pl-5 space-y-1">
                             {intentResult.steps.map((step, i) => (
                               <li key={i} className="text-sm">
-                                {step.description.includes(
-                                  "Transaction succeeded:"
-                                ) ? (
+                                {step.description}{" "}
+                                {step.transactionHash && (
                                   <>
-                                    {
-                                      step.description.split(
-                                        "Transaction succeeded:"
-                                      )[0]
-                                    }
                                     Transaction succeeded:{" "}
                                     <a
-                                      href={`https://alfajores.celoscan.io/tx/${
-                                        step.description
-                                          .split("Transaction succeeded:")[1]
-                                          .trim()
-                                          .split(" ")[0]
-                                      }`}
+                                      href={step.chain === "celoAlfajores" 
+                                        ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
+                                        : step.chain === "rootstock" 
+                                          ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
+                                          : `#`}
                                       target="_blank"
-                                      rel="noopener noreferrer"
+                                      rel="noopener noreferrer" 
                                       className="text-blue-500 hover:underline"
                                     >
-                                      {
-                                        step.description
-                                          .split("Transaction succeeded:")[1]
-                                          .trim()
-                                          .split(" ")[0]
-                                      }
+                                      {step.transactionHash}
                                     </a>
                                   </>
-                                ) : (
-                                  step.description
-                                )}{" "}
+                                )}
                                 <span className="text-xs text-muted-foreground">
                                   ({step.chain})
                                 </span>
