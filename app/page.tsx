@@ -1,8 +1,8 @@
 import Link from "next/link";
 // import { Button } from "@/components/ui/button";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // import AnimatedTitle from "@/components/animations/animatedTile";
-// import TypewriterEffect from "@/components/animations/TypewriterEffect";
+import TypewriterEffect from "@/components/animations/TypewriterEffect";
 import Image from "next/image";
 import codeSpace from "@/app/assets/codeImage.svg";
 import Capability1 from "@/app/assets/capabilities1.svg";
@@ -11,6 +11,7 @@ import Orb from "@/app/assets/orb.svg";
 import Optimization from "@/app/assets/optimization.svg";
 import Compliance from "@/app/assets/compliance.svg";
 import FooterLogo from "@/app/assets/footerlogo.svg";
+import GlitchText from "@/components/animations/glitch";
 
 export default function Home() {
   return (
@@ -21,16 +22,14 @@ export default function Home() {
             {/* Left column - Text content */}
             <div className="w-full md:w-7/12 lg:w-7/12">
               <h1 className="text-7xl md:text-8xl font-light tracking-tight">
-                Turn simple words
+                <GlitchText text="Turn simple words" className="hover:cursor-pointer" />
                 <br />
-                into{" "}
+                <GlitchText text="into" className="hover:cursor-pointer" />{" "}
                 <span
                   style={{ fontFamily: "InstrumentSerif" }}
                   className="text-[#FA4C15] italic"
                 >
-                  powerful DeFi
-                  <br />
-                  strategies.
+                  <TypewriterEffect text="powerful DeFi \n strategies." />
                 </span>
               </h1>
 
@@ -84,7 +83,7 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              Your intent
+              <GlitchText text="Your intent" className="text-orange-500 hover:cursor-pointer" />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
