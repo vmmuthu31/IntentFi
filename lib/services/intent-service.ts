@@ -113,25 +113,7 @@ const NETWORK_CONFIGS = {
         USDT: "0x50ef9155718e4b69972ebd7feb7d6d554169e6d2",
       },
     },
-  },
-  sagaIFI: {
-    chainId: 2743859179913000,
-    chain: sagaIFI,
-    name: "sagaIFI",
-    network: "sagaIFI",
-    rpcUrl: "https://intentfi-2743859179913000-1.jsonrpc.sagarpc.io",
-    contractAddresses: {
-      PriceOracle: "0x60b588582b8308b9b41966fBd38821F31AA06537",
-      LendingPool: "0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee",
-      YieldFarming: "0x653c13Fb7C1E5d855448af2A385F2D97a623384E",
-      DeFIPlatform: "0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1",
-      Token: {
-        IFI: "0x14b1c5415C1164fB09450c9e46a00D5C39e52644",
-        USDT: "0xE6e05E7DDB1d3248a367BDec413D6ea829bac587",
-        USDC: "0x7aDC738bAB6e32452D3065De9A1e77d755b50791",
-      },
-    },
-  },
+  }
 };
 2. check if the chainId is valid and the user given and the NETWORK_CONFIGS should be same the user current chainId: "${chainId}"
 3. Chekck if the user has given you token name, Amount and chainId
