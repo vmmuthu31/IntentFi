@@ -169,7 +169,7 @@ export default function IntentPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="rounded-xl border border-orange-900/20 bg-gradient-to-br from-zinc-900/50 to-black p-6 mt-6 shadow-lg"
+                    className="rounded-xl border border-orange-900/20 bg-gradient-to-br from-zinc-900/50 to-black p-6  shadow-lg"
                   >
                     <h3
                       className="text-xl md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600  flex items-center gap-2"

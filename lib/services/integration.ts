@@ -75,7 +75,7 @@ const NETWORK_CONFIGS = {
         USDT: "0x50ef9155718e4b69972ebd7feb7d6d554169e6d2",
       },
     },
-  }
+  },
 };
 
 /**
@@ -343,7 +343,7 @@ const setTokenPrice = async ({
   };
 
   return {
-    success: receipt.status !== "reverted",
+    success: receipt.status === "success",
     transactionHash: hash,
     receipt: formattedReceipt,
   };
@@ -477,7 +477,7 @@ const fundFaucet = async ({ chainId }: { chainId: number }) => {
 
         results.push({
           token: tokenSymbol,
-          success: receipt.status !== "reverted",
+          success: receipt.status === "success",
           transactionHash: hash,
           receipt: formattedReceipt,
         });
@@ -517,7 +517,7 @@ const deposit = async ({
 }) => {
   try {
     const { publicClient, walletClient } = await initalizeClients({ chainId });
-    
+
     if (!process.env.PRIVATE_KEY) {
       throw new Error("Private key not found");
     }
@@ -667,7 +667,7 @@ const deposit = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -820,7 +820,7 @@ const withdraw = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -856,21 +856,110 @@ const borrow = async ({
       throw new Error("Private key not found");
     }
     const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    const userAddress = account.address;
     const contractAddress = networkConfig.contractAddresses.LendingPool;
     const tokenAddress =
       networkConfig.contractAddresses.Token[
         token as keyof typeof networkConfig.contractAddresses.Token
       ];
 
+    if (!tokenAddress) {
+      throw new Error(`Token ${token} is not supported on this chain`);
+    }
+
+    // Check if the lending pool has sufficient liquidity
+    try {
+      const getAvailableLiquidity = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: lendingPoolABI,
+        functionName: "getAvailableLiquidity",
+        args: [tokenAddress],
+      });
+
+      const liquidityBigInt = getAvailableLiquidity as bigint;
+      const requestedAmount = parseUnits(amount, 18);
+
+      if (liquidityBigInt < BigInt(requestedAmount.toString())) {
+        return {
+          success: false,
+          error: "Insufficient liquidity in lending pool",
+          details: {
+            available: formatUnits(liquidityBigInt.toString(), 18),
+            requested: amount,
+          },
+        };
+      }
+    } catch (error) {
+      console.warn(
+        "Could not check liquidity, proceeding with borrow attempt:",
+        error
+      );
+    }
+
+    // If userAddress is provided, check user's collateral
+    if (userAddress) {
+      try {
+        const getUserAccountData = await publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: lendingPoolABI,
+          functionName: "getUserAccountData",
+          args: [userAddress as `0x${string}`],
+        });
+
+        // Parse user account data (structure depends on your lending pool implementation)
+        const userData = getUserAccountData as {
+          totalCollateralETH: bigint;
+          totalDebtETH: bigint;
+          availableBorrowsETH: bigint;
+          currentLiquidationThreshold: bigint;
+          ltv: bigint;
+          healthFactor: bigint;
+        };
+
+        // Check if user has enough borrowing power
+        const requestedAmountInETH = await getTokenValueInETH(
+          publicClient,
+          tokenAddress,
+          BigInt(parseUnits(amount, 18).toString()),
+          contractAddress
+        );
+
+        if (userData.availableBorrowsETH < requestedAmountInETH) {
+          return {
+            success: false,
+            error: "Insufficient collateral for borrowing",
+            details: {
+              availableBorrowsETH: formatUnits(
+                userData.availableBorrowsETH.toString(),
+                18
+              ),
+              requestedAmountInETH: formatUnits(
+                requestedAmountInETH.toString(),
+                18
+              ),
+              healthFactor: formatUnits(userData.healthFactor.toString(), 18),
+            },
+          };
+        }
+      } catch (error) {
+        console.warn(
+          "Could not check collateral, proceeding with borrow attempt:",
+          error
+        );
+      }
+    }
+
     const tokenAmount = parseUnits(amount, 18);
 
+    // Prepare transaction parameters
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "borrow",
       args: [tokenAddress, tokenAmount],
     });
 
-    const gasLimit = BigInt(200000);
+    // Increase gas limit to handle complex lending operations
+    const gasLimit = BigInt(300000); // Increased from 200000
     const [gasPrice, nonce] = await Promise.all([
       publicClient.getGasPrice(),
       publicClient.getTransactionCount({
@@ -879,20 +968,29 @@ const borrow = async ({
       }),
     ]);
 
+    // Add a small buffer to gas price for faster confirmation
+    const adjustedGasPrice = (gasPrice * BigInt(115)) / BigInt(100); // 15% buffer
+
     const txParams = {
       account,
       to: contractAddress,
       data,
       gas: gasLimit,
-      gasPrice,
+      gasPrice: adjustedGasPrice,
       nonce: BigInt(nonce),
       chain: chain,
     };
 
+    // Send transaction with improved error handling
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hash = await walletClient.sendTransaction(txParams as any);
+    console.log(`Borrow transaction sent: ${hash}`);
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    // Wait for receipt with timeout
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+      timeout: 60_000, // 60 second timeout
+    });
 
     const formattedReceipt = {
       blockHash: receipt.blockHash,
@@ -916,18 +1014,137 @@ const borrow = async ({
       type: receipt.type,
     };
 
+    // Check status and provide detailed result
+    if (receipt.status === "reverted") {
+      // Try to decode reversion reason if available
+      let revertReason = "Unknown reason";
+      try {
+        const tx = await publicClient.getTransaction({
+          hash,
+        });
+
+        if (tx.input) {
+          // Attempt to simulate the transaction to get reversion reason
+          const simulationResult = await publicClient
+            .call({
+              to: tx.to as `0x${string}`,
+              data: tx.input as `0x${string}`,
+              account: tx.from,
+            })
+
+            .catch((err) => {
+              // Extract revert reason from error
+              const reason = extractRevertReason(err);
+              if (reason) revertReason = reason;
+            });
+          console.log("Simulation result:", simulationResult);
+        }
+      } catch (error) {
+        console.error("Error decoding revert reason:", error);
+      }
+
+      return {
+        success: false,
+        transactionHash: hash,
+        receipt: formattedReceipt,
+        error: `Transaction reverted: ${revertReason}`,
+      };
+    }
+
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
   } catch (error) {
     console.error("Borrow error:", error);
+
+    // Provide more specific error messages based on error type
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    let errorType = "unknown";
+
+    if (errorMessage.includes("insufficient funds")) {
+      errorType = "insufficient_funds";
+      errorMessage = "Insufficient funds to execute transaction";
+    } else if (errorMessage.includes("user rejected")) {
+      errorType = "user_rejected";
+      errorMessage = "Transaction rejected by user";
+    } else if (errorMessage.includes("token not supported")) {
+      errorType = "unsupported_token";
+      errorMessage = `The token ${token} is not supported on this chain`;
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
+      errorType,
       details: error instanceof Error ? error.cause : undefined,
     };
+  }
+};
+
+// Helper function to extract revert reason from error
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const extractRevertReason = (error: any): string => {
+  if (!error) return "Unknown error";
+
+  const errorString = String(error);
+
+  // Common patterns for revert reason extraction
+  const revertPatterns = [
+    /reverted with reason string '([^']+)'/,
+    /reverted with custom error '([^']+)'/,
+    /reverted with panic code ([0-9x]+)/,
+  ];
+
+  for (const pattern of revertPatterns) {
+    const match = errorString.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return "Unknown revert reason";
+};
+
+// Helper function to get token value in ETH
+const getTokenValueInETH = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  publicClient: any,
+  tokenAddress: string,
+  tokenAmount: bigint,
+  lendingPoolAddress: string
+): Promise<bigint> => {
+  try {
+    // This function would normally call a price oracle or price feed
+    // For now, we'll implement a simple placeholder
+    const priceOracle = await publicClient.readContract({
+      address: lendingPoolAddress as `0x${string}`,
+      abi: lendingPoolABI,
+      functionName: "getPriceOracle",
+    });
+
+    if (!priceOracle) return BigInt(0);
+
+    const tokenPriceInETH = await publicClient.readContract({
+      address: priceOracle as `0x${string}`,
+      abi: [
+        {
+          inputs: [{ internalType: "address", name: "asset", type: "address" }],
+          name: "getAssetPrice",
+          outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      functionName: "getAssetPrice",
+      args: [tokenAddress as `0x${string}`],
+    });
+
+    return (tokenAmount * (tokenPriceInETH as bigint)) / BigInt(10 ** 18);
+  } catch (error) {
+    console.error("Error getting token value in ETH:", error);
+    return BigInt(0);
   }
 };
 
@@ -1015,7 +1232,7 @@ const repay = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -1268,7 +1485,7 @@ const listToken = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
       error:
@@ -1483,7 +1700,7 @@ const createPool = async ({
     }
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
       poolActivationSuccess: true,
@@ -1663,7 +1880,7 @@ const stake = async ({
       const faucetData = encodeFunctionData({
         abi: mintABI,
         functionName: "faucet",
-        args: [Amount] // 1,000,000 tokens with 18 decimals
+        args: [Amount], // 1,000,000 tokens with 18 decimals
       });
 
       const faucetParams = {
@@ -1782,7 +1999,7 @@ const stake = async ({
         address: contractAddress.YieldFarming as `0x${string}`,
         abi: yieldFarmingABI,
         functionName: "stake",
-        args: [BigInt(poolId),ethers.utils.parseUnits(amount, 18)],
+        args: [BigInt(poolId), ethers.utils.parseUnits(amount, 18)],
         account: account.address,
       });
       console.log("Simulation successful, proceeding with actual transaction");
@@ -1887,7 +2104,7 @@ const stake = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -2079,7 +2296,7 @@ const unstake = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -2242,7 +2459,7 @@ const claimRewards = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };
@@ -2332,7 +2549,7 @@ const emergencyWithdraw = async ({
     };
 
     return {
-      success: receipt.status !== "reverted",
+      success: receipt.status === "success",
       transactionHash: hash,
       receipt: formattedReceipt,
     };

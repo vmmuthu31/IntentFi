@@ -22,6 +22,21 @@ export async function POST(request: Request) {
       amount,
     });
 
+    // Check for errors from the borrow function
+    if (!result.success) {
+      // Return a more user-friendly error message
+      return NextResponse.json(
+        {
+          success: false,
+          message: result.error || "Failed to process borrow",
+          detail: result.details || {},
+          errorType: result.errorType || "transaction_error",
+          transactionHash: result.transactionHash || null,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Borrow successful",
