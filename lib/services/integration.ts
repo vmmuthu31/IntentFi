@@ -598,10 +598,12 @@ const deposit = async ({
       };
     }
 
+    const tokenAmount = parseUnits(amount, 18);
+
     const data = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "deposit",
-      args: [tokenAddress, BigInt(amount)],
+      args: [tokenAddress, tokenAmount],
     });
 
     const txParams = {
