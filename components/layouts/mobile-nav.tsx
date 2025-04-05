@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/ui/logo";
 import WalletConnect from "../ui/WalletConnect";
-import { ThemeToggle } from "../theme-toggle";
 
 const navItems = [
   {
