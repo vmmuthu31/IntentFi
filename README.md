@@ -4,9 +4,11 @@
 
 
 ## 🚀 Overview
-IntentFi is the first AI-powered, open-intent protocol that turns natural language into real, executable cross-chain DeFi strategies. Built for users, DAOs, and institutions, IntentFi focuses on enabling **yielding, lending, and borrowing** flows using open intents. The protocol provides a fully gasless, compliant, and no-code DeFi experience powered by a modular architecture.
+Most “AI intent” projects stop at simple swaps or token transfers — acting as surface-level wrappers over existing DeFi tools. **IntentFi goes deeper.** We've built an execution-first, open-intent protocol that automates the most valuable parts of DeFi: **lending, borrowing, and yield strategies** — across chains, without gas, code, or coordination.
 
-We believe DeFi shouldn’t feel like coding. With IntentFi, users simply say what they want to do — and the system understands, optimizes, and executes their financial goals.
+IntentFi transforms natural language into real, executable, cross-chain DeFi strategies. Powered by AI, account abstraction, and a modular strategy engine, users can express intents like _“Lend USDC at best APY”_ or _“Borrow ETH if rates drop”_ — and IntentFi handles bridging, routing, optimizing, and deploying, completely gasless and KYC-compliant.
+
+> We don’t just interpret your intent — we execute it.
 
 ---
 
@@ -35,6 +37,9 @@ Our AI parses the input and builds an **executable DAG (Directed Acyclic Graph)*
 ---
 
 ## 🔧 How It Works
+
+![image](https://github.com/user-attachments/assets/300b1518-1211-43b6-851b-068f6888634a)
+
 1. **User Input:** `"Lend USDC at best APY, borrow ETH if rates drop"`
 2. **AI Parsing:** Natural language is parsed into a DAG of intent blocks
 3. **Strategy Builder:** Flow created with yield/borrow/exit conditions
