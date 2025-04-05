@@ -12,10 +12,13 @@ export interface IntentStep {
   description: string;
   chain: string;
   transactionHash?: string;
+  requiresKyc?: boolean;
+  redirectUrl?: string;
 }
 
 export interface IntentExecutionPlan {
   steps: IntentStep[];
+  requiresKyc?: boolean;
 }
 
 /**
@@ -231,6 +234,24 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName === "borrow") {
         const numericChainId = parseInt(chainId, 10);
+
+        // Check if user is KYC verified before allowing borrowing
+        const isKycVerified = await checkUserKycStatus(step.userAddress);
+
+        if (!isKycVerified) {
+          // Return a special response indicating KYC verification is required
+          return {
+            steps: [
+              {
+                description: `KYC verification required to borrow ${amount} ${token} on ${chain}.`,
+                chain,
+                requiresKyc: true,
+                redirectUrl: "/verify",
+              },
+            ],
+            requiresKyc: true,
+          };
+        }
 
         const borrowResult = await integration.borrow({
           chainId: numericChainId,
@@ -565,5 +586,39 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
         { description: "Monitor and confirm completion", chain: "N/A" },
       ],
     };
+  }
+}
+
+/**
+ * Check if a user has completed KYC verification
+ * @param userAddress The user's wallet address
+ * @returns Promise resolving to boolean indicating if user is verified
+ */
+async function checkUserKycStatus(userAddress?: string): Promise<boolean> {
+  if (!userAddress) return false;
+
+  try {
+    // In production, this would query a MongoDB database or API
+    // For now, we'll simulate with a call to a verification endpoint
+    const response = await fetch(
+      `/api/user/verification?address=${userAddress}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Verification check failed: ${response.status}`);
+      return false;
+    }
+
+    const data = await response.json();
+    return data.isVerified === true;
+  } catch (error) {
+    console.error("Error checking KYC status:", error);
+    return false;
   }
 }

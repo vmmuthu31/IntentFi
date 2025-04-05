@@ -878,9 +878,48 @@ export default function IntentAgent({
         confirmationMessage = `I'll process your request to repay ${amount} ${token.toUpperCase()} on ${chainName}.`;
       } else if (balanceMatch) {
         const token = balanceMatch[1];
-        confirmationMessage = `I'll check your ${
-          token ? token.toUpperCase() : getDefaultToken()
-        } balance on ${chainName}.`;
+
+        // If specific token is provided, proceed with balance check
+        if (token) {
+          confirmationMessage = `I'll check your ${token.toUpperCase()} balance on ${chainName}.`;
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: confirmationMessage,
+              timestamp: new Date(),
+            },
+          ]);
+
+          // Process the intent directly
+          processIntent(formattedIntent);
+        } else {
+          // If no specific token is provided, show available tokens for the current chain
+          directFunctionCall = false; // Don't process intent yet
+          const availableTokens = getTokensForCurrentChain();
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Which token balance would you like to check on ${chainName}? Here are your available tokens:`,
+              timestamp: new Date(),
+              tokens: availableTokens.map((token) => ({
+                symbol: token.symbol,
+                balance: token.balance,
+                icon: token.icon,
+                price: token.price,
+              })),
+              actions: availableTokens.map((token) => ({
+                label: `Check ${token.symbol} balance`,
+                action: "DIRECT_INTENT",
+                intent: `Check my ${token.symbol} balance on ${chainName}`,
+              })),
+            },
+          ]);
+          return; // Stop here, don't continue with the rest of the function
+        }
       } else if (stakeMatch) {
         const amount = stakeMatch[1];
         const token = stakeMatch[2];
@@ -895,17 +934,50 @@ export default function IntentAgent({
         confirmationMessage = `I'll retrieve detailed pool information for ${chainName}.`;
       }
 
+      // For all other intents, show confirmation and process immediately
+      if (directFunctionCall && !balanceMatch) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Process the intent directly
+        processIntent(formattedIntent);
+      }
+    } else if (
+      lowerIntent.includes("balance") ||
+      lowerIntent.includes("check") ||
+      lowerIntent.includes("how much") ||
+      lowerIntent.match(/^balance$/i)
+    ) {
+      // Handle generic balance requests that didn't match the specific pattern
+      directFunctionCall = true; // Mark as handled
+      const chainName = getCurrentChainName();
+      const availableTokens = getTokensForCurrentChain();
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: confirmationMessage,
+          content: `Which token balance would you like to check on ${chainName}?`,
           timestamp: new Date(),
+          tokens: availableTokens.map((token) => ({
+            symbol: token.symbol,
+            balance: token.balance,
+            icon: token.icon,
+            price: token.price,
+          })),
+          actions: availableTokens.map((token) => ({
+            label: `Check ${token.symbol} balance`,
+            action: "DIRECT_INTENT",
+            intent: `Check my ${token.symbol} balance on ${chainName}`,
+          })),
         },
       ]);
-
-      // Process the intent directly
-      processIntent(formattedIntent);
     } else {
       // If it's a simple intent (no pattern matched), still pass it to intent processor
       if (
@@ -1170,7 +1242,8 @@ export default function IntentAgent({
               ];
               break;
             case "borrow":
-              explanation = "Borrow tokens against your deposited collateral.";
+              explanation =
+                "Borrow tokens against your deposited collateral. Note: KYC verification is required for borrowing.";
               examples = [
                 `Borrow 20 USDT on ${getCurrentChainName()}`,
                 `Take a loan of 5 ${getDefaultToken()}`,

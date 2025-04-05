@@ -71,6 +71,18 @@ export default function IntentPage() {
       if (data.success) {
         setIntentResult(data.data);
 
+        // Check if KYC verification is required
+        if (data.data.requiresKyc) {
+          toast.warning("KYC verification required for this operation", {
+            action: {
+              label: "Verify Now",
+              onClick: () => (window.location.href = "/verify"),
+            },
+            duration: 10000,
+          });
+          return;
+        }
+
         // Set execution status for new intent steps
         setExecutionStatus(
           data.data.steps.map((_: unknown, index: number) => ({
