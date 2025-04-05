@@ -9,8 +9,13 @@ import { toSafeSmartAccount } from "permissionless/accounts";
 import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celoAlfajores } from "viem/chains";
-import { entryPoint07Address, SmartAccount } from "viem/account-abstraction";
-import { createSmartAccountClient, SmartAccountClient } from "permissionless";
+import {
+  entryPoint07Address,
+  EntryPointVersion,
+} from "viem/account-abstraction";
+import { createSmartAccountClient } from "permissionless";
+import { createPimlicoClient } from "permissionless/clients/pimlico";
+import { erc7579Actions } from "permissionless/actions/erc7579";
 
 // ABI imports
 const erc20ABI = [
@@ -75,11 +80,15 @@ let publicClient = createPublicClient({
   transport: http(process.env.NEXT_PUBLIC_INFURA_URL || ""),
 });
 
-// Define clients
-let smartAccountClient: SmartAccountClient;
-let account: SmartAccount | null = null;
+// State management
 let isInitializing = false;
 let isDeploying = false;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let account: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let smartAccountClient: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let pimlicoClient: any = null;
 
 // Initialize clients function
 export const initClients = async () => {
@@ -124,6 +133,16 @@ export const initClients = async () => {
     const pimlicoUrl = `https://api.pimlico.io/v2/44787/rpc?apikey=${apiKey}`;
     console.log("Using Pimlico URL:", pimlicoUrl);
 
+    // Create Pimlico paymaster client
+    pimlicoClient = createPimlicoClient({
+      chain: celoAlfajores,
+      transport: http(pimlicoUrl),
+      entryPoint: {
+        address: entryPoint07Address,
+        version: "0.7" as EntryPointVersion,
+      },
+    });
+
     // Create smart account with owner derived from private key
     const owner = privateKeyToAccount(privateKey as `0x${string}`);
     console.log("Owner address:", owner.address);
@@ -132,8 +151,15 @@ export const initClients = async () => {
     account = await toSafeSmartAccount({
       client: publicClient,
       owners: [owner],
-      entryPoint: { address: entryPoint07Address, version: "0.7" },
       version: "1.4.1",
+      entryPoint: {
+        address: entryPoint07Address,
+        version: "0.7",
+      },
+      safe4337ModuleAddress: "0x7579EE8307284F293B1927136486880611F20002",
+      erc7579LaunchpadAddress: "0x7579011aB74c46090561ea277Ba79D510c6C00ff",
+      attesters: ["0x000000333034E9f539ce08819E12c1b8Cb29084d"], // Rhinestone attesters
+      attestersThreshold: 1,
     });
 
     console.log("Smart account created:", account.address);
@@ -142,12 +168,34 @@ export const initClients = async () => {
     const isDeployed = await account.isDeployed();
     console.log("Smart account is deployed:", isDeployed);
 
-    // Create smart account client with the appropriate bundler
+    // Create smart account client with the appropriate bundler and paymaster
     smartAccountClient = createSmartAccountClient({
-      account,
+      account: account,
       chain: celoAlfajores,
       bundlerTransport: http(pimlicoUrl),
-    });
+      paymaster: pimlicoClient,
+      userOperation: {
+        estimateFeesPerGas: async () => {
+          if (pimlicoClient) {
+            // Get gas price from paymaster or use a default
+            const gasPriceResponse =
+              await pimlicoClient.getUserOperationGasPrice();
+            // For Celo, maxFeePerGas must equal maxPriorityFeePerGas
+            const gasPrice = gasPriceResponse.fast.maxFeePerGas;
+            return {
+              maxFeePerGas: gasPrice,
+              maxPriorityFeePerGas: gasPrice, // Same as maxFeePerGas for Celo
+            };
+          }
+          // Fallback to static values
+          const gasPrice = BigInt(3000000000); // 3 Gwei
+          return {
+            maxFeePerGas: gasPrice,
+            maxPriorityFeePerGas: gasPrice,
+          };
+        },
+      },
+    }).extend(erc7579Actions());
 
     // If the account is not deployed, try to deploy it
     if (!isDeployed) {
@@ -222,51 +270,20 @@ export const deploySmartAccount = async () => {
       return false;
     }
 
-    // Make sure we have the latest smart account client
-    const pimlicoUrl = `https://api.pimlico.io/v2/44787/rpc?apikey=${apiKey}`;
-
     // Try direct deployment with initCode
     try {
       console.log("Account address:", account.address);
 
-      // Create options for a minimal blank transaction to self with extremely high gas
-      const deploymentOptions = {
-        account,
-        chain: celoAlfajores,
-        to: account.address,
-        value: BigInt(0),
-        data: "0x",
-        maxFeePerGas: BigInt(50000000000), // 50 Gwei
-        maxPriorityFeePerGas: BigInt(40000000000), // 40 Gwei
-        gasLimit: BigInt(1000000), // 1,000,000 gas
-      };
-
-      console.log(
-        "Deployment options:",
-        JSON.stringify(deploymentOptions, (_, v) =>
-          typeof v === "bigint" ? v.toString() : v
-        )
-      );
-
-      // Since we're using an Account Abstraction pattern, we need to recreate the client
-      // This forces a fresh client with the most current settings
-      smartAccountClient = createSmartAccountClient({
-        account,
-        chain: celoAlfajores,
-        bundlerTransport: http(pimlicoUrl),
-      });
-
-      console.log("Sending deployment transaction...");
+      // Set gas price - must be identical for maxFeePerGas and maxPriorityFeePerGas on Celo
+      const deploymentGasPrice = BigInt(50000000000); // 50 Gwei
 
       // Send the deployment transaction with a lot of gas to ensure it gets included
       const deployHash = await smartAccountClient.sendTransaction({
-        account,
-        chain: celoAlfajores,
         to: account.address,
         value: BigInt(0),
         data: "0x",
-        maxFeePerGas: BigInt(50000000000),
-        maxPriorityFeePerGas: BigInt(40000000000),
+        maxFeePerGas: deploymentGasPrice,
+        maxPriorityFeePerGas: deploymentGasPrice, // Same as maxFeePerGas for Celo
       });
 
       console.log("Deployment transaction hash:", deployHash);
@@ -344,11 +361,11 @@ async function sendSmartAccountTransaction(
   value: bigint = BigInt(0)
 ) {
   // Make sure account is initialized and deployed
-  if (!account) {
-    console.log("Account not initialized, initializing...");
+  if (!account || !smartAccountClient) {
+    console.log("Account or client not initialized, initializing...");
     await initClients();
-    if (!account) {
-      throw new Error("Failed to initialize account");
+    if (!account || !smartAccountClient) {
+      throw new Error("Failed to initialize account or client");
     }
   }
 
@@ -401,34 +418,28 @@ async function sendSmartAccountTransaction(
     }
   }
 
-  const apiKey = process.env.NEXT_PUBLIC_PIMLICO_API_KEY;
-  if (!apiKey) throw new Error("Missing PIMLICO_API_KEY");
-
   try {
-    // Set transaction parameters
+    // Get gas price
+    const gasPrice = BigInt(3000000000); // 3 Gwei
+
+    // Set transaction parameters with identical gas price values for Celo
+    // Celo doesn't support EIP-1559 fee model, so both values must be equal
     const transactionParams = {
-      account,
-      chain: celoAlfajores,
       to: to as `0x${string}`,
       value,
       data: data as `0x${string}`,
-      maxFeePerGas: BigInt(2000000000),
-      maxPriorityFeePerGas: BigInt(1500000000),
+      maxFeePerGas: gasPrice,
+      maxPriorityFeePerGas: gasPrice, // Same as maxFeePerGas for Celo
     };
 
-    // Get the current bundle client
-    const pimlicoUrl = `https://api.pimlico.io/v2/44787/rpc?apikey=${apiKey}`;
+    console.log(
+      "Sending transaction to:",
+      to,
+      "with gas price:",
+      gasPrice.toString()
+    );
 
-    // Create a fresh client instance for this transaction
-    smartAccountClient = createSmartAccountClient({
-      account,
-      chain: celoAlfajores,
-      bundlerTransport: http(pimlicoUrl),
-    });
-
-    console.log("Sending transaction to:", to);
-
-    // Attempt to send the transaction
+    // Attempt to send the transaction with paymaster sponsorship
     let txHash;
     try {
       txHash = await smartAccountClient.sendTransaction(transactionParams);
@@ -450,16 +461,31 @@ async function sendSmartAccountTransaction(
           account.isDeployed = async () => true;
         }
 
-        // Create a fresh client with updated account
-        smartAccountClient = createSmartAccountClient({
-          account,
-          chain: celoAlfajores,
-          bundlerTransport: http(pimlicoUrl),
-        });
-
         // Retry without factory data
         console.log("Retrying transaction without factory data");
         txHash = await smartAccountClient.sendTransaction(transactionParams);
+      } else if (
+        err instanceof Error &&
+        err.message.includes("Smart Account does not have sufficient funds")
+      ) {
+        // If we get insufficient funds error, try with higher gas price
+        console.log(
+          "Insufficient funds error, using paymaster to sponsor gas..."
+        );
+
+        // Try with higher gas price (but still identical values)
+        const higherGasPrice = BigInt(5000000000); // 5 Gwei
+        const newParams = {
+          ...transactionParams,
+          maxFeePerGas: higherGasPrice,
+          maxPriorityFeePerGas: higherGasPrice,
+        };
+
+        console.log(
+          "Retrying with paymaster sponsorship and higher gas:",
+          higherGasPrice.toString()
+        );
+        txHash = await smartAccountClient.sendTransaction(newParams);
       } else {
         // Re-throw any other errors
         throw err;
@@ -493,7 +519,7 @@ export const approve = async (req: {
     }
 
     // Initialize clients if needed
-    if (!account) {
+    if (!account || !smartAccountClient) {
       console.log("Initializing clients");
       await initClients();
     }
