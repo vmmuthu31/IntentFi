@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -63,38 +56,40 @@ const completedIntents = [
 
 export function IntentHistory() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Intent History</CardTitle>
-        <CardDescription>
-          Monitor and manage your active and completed intents
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="active">
-          <TabsList className="mb-4">
-            <TabsTrigger value="active">Active Intents</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
+    <div>
+      <Tabs defaultValue="active">
+        <TabsList className="bg-gray-800/50 mb-8 rounded-xl p-1 gap-2 border border-gray-700">
+          <TabsTrigger
+            value="active"
+            className="data-[state=active]:bg-[#FA4C15] data-[state=active]:text-white rounded-lg text-gray-300"
+          >
+            Active Intents
+          </TabsTrigger>
+          <TabsTrigger
+            value="completed"
+            className="data-[state=active]:bg-[#FA4C15] data-[state=active]:text-white rounded-lg text-gray-300"
+          >
+            Completed
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="active" className="space-y-4">
-            <div className="grid gap-4">
-              {activeIntents.map((intent) => (
-                <ActiveIntentCard key={intent.id} intent={intent} />
-              ))}
-            </div>
-          </TabsContent>
+        <TabsContent value="active" className="space-y-6">
+          <div className="grid gap-6">
+            {activeIntents.map((intent) => (
+              <ActiveIntentCard key={intent.id} intent={intent} />
+            ))}
+          </div>
+        </TabsContent>
 
-          <TabsContent value="completed" className="space-y-4">
-            <div className="grid gap-4">
-              {completedIntents.map((intent) => (
-                <CompletedIntentCard key={intent.id} intent={intent} />
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+        <TabsContent value="completed" className="space-y-6">
+          <div className="grid gap-6">
+            {completedIntents.map((intent) => (
+              <CompletedIntentCard key={intent.id} intent={intent} />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
@@ -112,50 +107,58 @@ interface ActiveIntentProps {
 
 function ActiveIntentCard({ intent }: ActiveIntentProps) {
   return (
-    <div className="rounded-lg border p-4 transition-colors hover:bg-accent/50">
+    <div className="rounded-xl border border-gray-800 bg-gray-900/30 p-6 transition-all hover:bg-gray-800/50 hover:border-gray-700">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-medium">{intent.name}</h3>
-          <p className="text-sm text-muted-foreground">{intent.description}</p>
+          <h3 className="text-xl text-white font-medium">{intent.name}</h3>
+          <p className="text-gray-400 mt-1">{intent.description}</p>
         </div>
         <div className="flex items-center">
-          <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-          <span className="text-sm">Active</span>
+          <div className="mr-2 h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-green-400 text-sm font-medium">Live</span>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1">
+      <div className="mt-5 flex flex-wrap gap-2">
         {intent.chains.map((chain) => (
           <div
             key={chain}
-            className="px-2 py-1 text-xs rounded-full bg-accent text-accent-foreground"
+            className="px-3 py-1 text-xs rounded-full bg-gray-800 text-gray-300 border border-gray-700"
           >
             {chain}
           </div>
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+      <div className="mt-6 grid grid-cols-2 gap-6">
         <div>
-          <div className="text-muted-foreground">Last Execution</div>
-          <div>{intent.lastExecution}</div>
+          <div className="text-gray-500 text-sm">Last Execution</div>
+          <div className="text-gray-300 mt-1">{intent.lastExecution}</div>
         </div>
         <div>
-          <div className="text-muted-foreground">Performance</div>
-          <div className="font-medium text-green-600 dark:text-green-400">
+          <div className="text-gray-500 text-sm">Performance</div>
+          <div
+            className={`font-medium mt-1 ${
+              intent.performance.includes("-")
+                ? "text-red-400"
+                : "text-green-400"
+            }`}
+          >
             {intent.performance}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex justify-end space-x-2">
-        <Button variant="outline" size="sm">
+      <div className="mt-6 flex justify-end space-x-3">
+        <Button
+          variant="outline"
+          className="border border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800"
+        >
           Edit
         </Button>
         <Button
           variant="outline"
-          size="sm"
-          className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400"
+          className="border border-red-900/50 bg-transparent text-red-400 hover:bg-red-900/20"
         >
           Pause
         </Button>
@@ -178,50 +181,52 @@ interface CompletedIntentProps {
 
 function CompletedIntentCard({ intent }: CompletedIntentProps) {
   return (
-    <div className="rounded-lg border p-4 transition-colors hover:bg-accent/50">
+    <div className="rounded-xl border border-gray-800 bg-gray-900/30 p-6 transition-all hover:bg-gray-800/50 hover:border-gray-700">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-medium">{intent.name}</h3>
-          <p className="text-sm text-muted-foreground">{intent.description}</p>
+          <h3 className="text-xl text-white font-medium">{intent.name}</h3>
+          <p className="text-gray-400 mt-1">{intent.description}</p>
         </div>
         <div className="flex items-center">
-          <div className="mr-2 h-2 w-2 rounded-full bg-gray-400" />
-          <span className="text-sm">Completed</span>
+          <div className="mr-2 h-2.5 w-2.5 rounded-full bg-gray-400" />
+          <span className="text-gray-400 text-sm font-medium">Completed</span>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-1">
+      <div className="mt-5 flex flex-wrap gap-2">
         {intent.chains.map((chain) => (
           <div
             key={chain}
-            className="px-2 py-1 text-xs rounded-full bg-accent text-accent-foreground"
+            className="px-3 py-1 text-xs rounded-full bg-gray-800 text-gray-300 border border-gray-700"
           >
             {chain}
           </div>
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+      <div className="mt-6 grid grid-cols-2 gap-6">
         <div>
-          <div className="text-muted-foreground">Execution Date</div>
-          <div>{intent.executionDate}</div>
+          <div className="text-gray-500 text-sm">Execution Date</div>
+          <div className="text-gray-300 mt-1">{intent.executionDate}</div>
         </div>
         <div>
-          <div className="text-muted-foreground">Result</div>
-          <div className="font-medium text-green-600 dark:text-green-400">
+          <div className="text-gray-500 text-sm">Result</div>
+          <div className="font-medium mt-1 text-green-400">
             {intent.performance}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex justify-end space-x-2">
-        <Button variant="outline" size="sm">
+      <div className="mt-6 flex justify-end space-x-3">
+        <Button
+          variant="outline"
+          className="border border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800"
+        >
           Details
         </Button>
         <Button
           variant="outline"
-          size="sm"
-          className="text-primary hover:text-primary-hover"
+          className="border border-[#FA4C15]/30 bg-transparent text-[#FA4C15] hover:bg-[#FA4C15]/10"
         >
           Reactivate
         </Button>
