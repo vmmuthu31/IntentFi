@@ -217,7 +217,7 @@ export default function VerifyPage() {
                           </p>
                           <div className="flex space-x-2 mt-2">
                             <a
-                              href="https://apps.apple.com/app/self/id1630008171"
+                              href="https://apps.apple.com/us/app/self-zk/id6478563710"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center border border-zinc-700"
@@ -232,7 +232,7 @@ export default function VerifyPage() {
                               App Store
                             </a>
                             <a
-                              href="https://play.google.com/store/apps/details?id=xyz.self.passport"
+                              href="https://play.google.com/store/apps/details?id=com.proofofpassportapp&hl=en_GB"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center border border-zinc-700"
@@ -595,7 +595,7 @@ export default function VerifyPage() {
                     <Link href="/" className="flex-1">
                       <Button
                         variant="outline"
-                        className="w-full py-6 text-lg border-zinc-700 text-black cursor-pointer hover:bg-zinc-800"
+                        className="w-full py-6 text-lg border-zinc-700 bg-black text-white cursor-pointer hover:bg-zinc-800"
                       >
                         Return to Home
                       </Button>
