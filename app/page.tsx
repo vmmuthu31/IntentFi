@@ -22,19 +22,17 @@ export default function Home() {
             {/* Left column - Text content */}
             <div className="w-full md:w-7/12 lg:w-7/12">
               <h1 className="text-7xl md:text-8xl font-light tracking-tight">
-                <GlitchText
-                  text="Turn simple words"
-                  className="hover:cursor-pointer"
-                />
+                <span className="hover:cursor-pointer">Turn simple words</span>
                 <br />
-                <GlitchText text="into" className="hover:cursor-pointer" />{" "}
+                <span className="hover:cursor-pointer">into</span>
                 <span
                   style={{ fontFamily: "InstrumentSerif" }}
                   className="text-[#FA4C15] italic"
                 >
-                  <TypewriterEffect text="powerful DeFi \n strategies." />
+                  <TypewriterEffect className="leading-[1.2]" />
                 </span>
               </h1>
+
 
               <p className="text-xl text-gray-400 mt-8 mb-10 max-w-2xl">
                 IntentFi is the first AI-powered intent engine for DeFi that

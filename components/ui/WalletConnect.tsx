@@ -36,7 +36,7 @@ function WalletConnect() {
                 return (
                   <Button
                     onClick={openConnectModal}
-                    className="bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 hover:from-purple-700 hover:via-blue-600 hover:to-cyan-500 text-white"
+                    className="bg-[#FA4C15] hover:bg-opacity-90 text-white hover:cursor-pointer"
                   >
                     Connect Wallet
                   </Button>
