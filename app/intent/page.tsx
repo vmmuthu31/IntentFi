@@ -49,10 +49,10 @@ export default function IntentPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          intent,
+        body: JSON.stringify({ 
+          intent, 
           chainId,
-          userAddress: address,
+          userAddress: address
         }),
       });
 

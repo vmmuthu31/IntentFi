@@ -45,9 +45,9 @@ export function MainNav({ className }: MainNavProps) {
           >
             {item.title}
             {pathname === item.href && (
-              <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 transform" />
+              <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-white transform" />
             )}
-            <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
+            <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
           </Link>
         ))}
       </nav>

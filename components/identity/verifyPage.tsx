@@ -100,10 +100,17 @@ export default function VerifyPage() {
           className="max-w-4xl mx-auto"
         >
           <header className="text-center mb-12">
-            <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-yellow-500 mb-4">
-              Secure Identity Verification
+            <h1 className="text-7xl font-light tracking-tight mb-4">
+              Secure Identity
+              <br />
+              <span
+                style={{ fontFamily: "InstrumentSerif" }}
+                className="text-[#FA4C15] italic"
+              >
+                Verification
+              </span>
             </h1>
-            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-400 mt-6 mb-8 max-w-2xl mx-auto">
               Verify your identity on-chain while maintaining complete privacy
               and control of your data
             </p>
