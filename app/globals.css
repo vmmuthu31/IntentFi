@@ -175,26 +175,34 @@
       transparent 100%     /* Bottom transparent area */
     ),
     /* Horizontal gradient */
-    linear-gradient(to right, 
-      #5a2411, 
-      #FA4C15 30%, 
-      #FA4C15 60%, 
-      #5a2411
-    );
+      linear-gradient(to right, #5a2411, #fa4c15 30%, #fa4c15 60%, #5a2411);
   background-size: 100% 100%;
   min-height: 100vh;
 }
 
 @font-face {
-  font-family: 'InstrumentSerif';
-  src: url('/fonts/Instrument_Serif/InstrumentSerif-Regular.ttf') format('truetype');
+  font-family: "InstrumentSerif";
+  src: url("/fonts/Instrument_Serif/InstrumentSerif-Regular.ttf")
+    format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'InstrumentSerif';
-  src: url('/fonts/Instrument_Serif/InstrumentSerif-Italic.ttf') format('truetype');
+  font-family: "InstrumentSerif";
+  src: url("/fonts/Instrument_Serif/InstrumentSerif-Italic.ttf")
+    format("truetype");
   font-weight: normal;
   font-style: italic;
+}
+
+/* Prevent content jumps when interacting with fixed elements */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4rem; /* Adds padding for anchor links to account for fixed header */
+}
+
+body {
+  overflow-x: hidden;
+  overscroll-behavior-y: none; /* Prevents bouncing effect on some browsers */
 }
