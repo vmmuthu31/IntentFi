@@ -2100,6 +2100,8 @@ const unstake = async ({
     return {
       success: receipt.status !== "reverted",
       transactionHash: hash,
+      token: stakingToken,
+      chain: chain,
       receipt: formattedReceipt,
     };
   } catch (error) {
