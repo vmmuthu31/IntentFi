@@ -74,6 +74,7 @@ export default function IntentPage() {
   const handleProcessIntent = async () => {
     setIsProcessing(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const lowerIntent = intent.toLowerCase().trim();
 
       // if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
@@ -214,62 +215,6 @@ export default function IntentPage() {
     }, 100);
   };
 
-  const executeIntent = async () => {
-    if (!intentResult || !isConnected) return;
-
-    setIsExecuting(true);
-    setExecutionStatus(
-      intentResult.steps.map((_, index) => ({
-        step: index,
-        status: "pending",
-      }))
-    );
-
-    try {
-      for (let i = 0; i < intentResult.steps.length; i++) {
-        setExecutionStatus((prev) =>
-          prev.map((status, idx) =>
-            idx === i ? { ...status, status: "processing" } : status
-          )
-        );
-
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const fakeTxHash = `0x${Math.random().toString(16).substring(2, 42)}`;
-
-        setExecutionStatus((prev) =>
-          prev.map((status, idx) =>
-            idx === i
-              ? { ...status, status: "complete", txHash: fakeTxHash }
-              : status
-          )
-        );
-
-        toast.success(
-          `Completed step ${i + 1}: ${intentResult.steps[i].description}`
-        );
-      }
-
-      toast.success("Intent execution completed successfully!");
-    } catch (error) {
-      console.error("Error executing intent:", error);
-      toast.error("Failed to execute intent. Please try again.");
-
-      const currentStep = executionStatus.findIndex(
-        (s) => s.status === "processing"
-      );
-      if (currentStep !== -1) {
-        setExecutionStatus((prev) =>
-          prev.map((status, idx) =>
-            idx === currentStep ? { ...status, status: "failed" } : status
-          )
-        );
-      }
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   const handleClear = () => {
     setIntent("");
     setIntentResult(null);
@@ -359,13 +304,15 @@ export default function IntentPage() {
                                   <>
                                     Transaction succeeded:{" "}
                                     <a
-                                      href={step.chain === "celoAlfajores" 
-                                        ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
-                                        : step.chain === "rootstock" 
+                                      href={
+                                        step.chain === "celoAlfajores"
+                                          ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
+                                          : step.chain === "rootstock"
                                           ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
-                                          : `#`}
+                                          : `#`
+                                      }
                                       target="_blank"
-                                      rel="noopener noreferrer" 
+                                      rel="noopener noreferrer"
                                       className="text-blue-500 hover:underline"
                                     >
                                       {step.transactionHash}
