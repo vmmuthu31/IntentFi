@@ -62,7 +62,7 @@ export default function IntentPage() {
     }>
   >([]);
 
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   const handleProcessIntent = async () => {
     setIsProcessing(true);
@@ -72,7 +72,11 @@ export default function IntentPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ intent, chainId }),
+        body: JSON.stringify({ 
+          intent, 
+          chainId,
+          userAddress: address
+        }),
       });
 
       const data = await response.json();
@@ -119,16 +123,13 @@ export default function IntentPage() {
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <h1 className="text-7xl font-light tracking-tight mb-4">
-              <GlitchText
-                text="Turn words into"
-                className="hover:cursor-pointer"
-              />
+              Turn words into
               <br />
               <span
                 style={{ fontFamily: "InstrumentSerif" }}
                 className="text-[#FA4C15] italic"
               >
-                <TypewriterEffect text="powerful strategies." />
+                powerful strategies.
               </span>
             </h1>
             <p className="text-xl text-gray-400 mt-6 mb-8 max-w-2xl mx-auto">
@@ -169,7 +170,7 @@ export default function IntentPage() {
                         className="text-lg mb-2"
                       >
                         <span
-                          className="text-xl text-[#FA4C15]"
+                          className="text-3xl text-[#FA4C15]"
                           style={{ fontFamily: "InstrumentSerif" }}
                         >
                           Your Intent
@@ -180,7 +181,7 @@ export default function IntentPage() {
                         placeholder="Example: 'Earn the highest yield on my USDC across all chains' or 'Convert 50% of my Bitcoin to a diversified DeFi portfolio'"
                         value={intent}
                         onChange={(e) => setIntent(e.target.value)}
-                        className="min-h-32 bg-gray-800/50 border-gray-700 rounded-xl text-white placeholder:text-gray-500 p-4"
+                        className="min-h-32 bg-gray-800/50 border-gray-700 rounded-xl text-white placeholder:text-gray-500 p-4 transition-all duration-300 focus:ring-2 focus:ring-[#FA4C15]/50 focus:border-[#FA4C15] hover:border-gray-600 shadow-inner shadow-black/20 text-lg backdrop-blur-sm"
                       />
                       {!intentResult && (
                         <StandaloneFormDescription className="mt-2">
@@ -194,7 +195,7 @@ export default function IntentPage() {
                       <div className="mt-2">
                         <h3 className="text-gray-300 text-lg mb-4">
                           <span
-                            className="text-xl text-[#FA4C15]"
+                            className="text-3xl text-[#FA4C15]"
                             style={{ fontFamily: "InstrumentSerif" }}
                           >
                             Example intents to try:
