@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { approve } from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
