@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { borrow } from "@/lib/services/integration";
+import { repay } from "@/lib/services/integration";
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await borrow({
+    const result = await repay({
       chainId,
       token,
       amount,
@@ -24,15 +24,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Borrow successful",
+      message: "Repay successful",
       data: result,
     });
   } catch (error) {
-    console.error("Error in borrow:", error);
+    console.error("Error in repay:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to process borrow",
+        message: "Failed to process repay",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
