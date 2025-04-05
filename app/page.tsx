@@ -1,8 +1,8 @@
 import Link from "next/link";
 // import { Button } from "@/components/ui/button";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // import AnimatedTitle from "@/components/animations/animatedTile";
-// import TypewriterEffect from "@/components/animations/TypewriterEffect";
+import TypewriterEffect from "@/components/animations/TypewriterEffect";
 import Image from "next/image";
 import codeSpace from "@/app/assets/codeImage.svg";
 import Capability1 from "@/app/assets/capabilities1.svg";
@@ -10,6 +10,8 @@ import Capability2 from "@/app/assets/capabilities2.svg";
 import Orb from "@/app/assets/orb.svg";
 import Optimization from "@/app/assets/optimization.svg";
 import Compliance from "@/app/assets/compliance.svg";
+import FooterLogo from "@/app/assets/footerlogo.svg";
+import GlitchText from "@/components/animations/glitch";
 
 export default function Home() {
   return (
@@ -20,16 +22,14 @@ export default function Home() {
             {/* Left column - Text content */}
             <div className="w-full md:w-7/12 lg:w-7/12">
               <h1 className="text-7xl md:text-8xl font-light tracking-tight">
-                Turn simple words
+                <GlitchText text="Turn simple words" className="hover:cursor-pointer" />
                 <br />
-                into{" "}
+                <GlitchText text="into" className="hover:cursor-pointer" />{" "}
                 <span
                   style={{ fontFamily: "InstrumentSerif" }}
                   className="text-[#FA4C15] italic"
                 >
-                  powerful DeFi
-                  <br />
-                  strategies.
+                  <TypewriterEffect text="powerful DeFi \n strategies." />
                 </span>
               </h1>
 
@@ -83,7 +83,7 @@ export default function Home() {
               className="text-3xl md:text-4xl font-serif text-orange-500 mb-6"
               style={{ fontFamily: "InstrumentSerif" }}
             >
-              Your intent
+              <GlitchText text="Your intent" className="text-orange-500 hover:cursor-pointer" />
             </h2>
             <div className="mb-6">
               <p className="text-gray-400 text-lg mb-0">
@@ -537,31 +537,59 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="py-8 px-4 bg-gray-900 text-gray-400">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <div className="text-xl font-bold text-white">IntentFI</div>
-              <div className="text-sm">Cross-Chain Intent Finance</div>
+
+      <div className="border-b border-gray-800 mt-20"></div>
+
+      <footer className="mb-10 rounded-b-2xl bg-background">
+        <div className="flex flex-col md:flex-row gap-8 justify-around text-white pt-12 px-4">
+          <div className="flex-1">
+            <Image
+              src={FooterLogo}
+              alt="Footer Logo"
+              width={400}
+              height={400}
+              className="mx-auto mt-8"
+            />
+          </div>
+          <div className="flex-1">
+            <div
+              style={{ fontFamily: 'InstrumentSerif' }}
+              className="text-center md:text-9xl text-4xl italic"
+            >
+              IntentFi
             </div>
-            <div className="flex space-x-6">
-              <Link href="#" className="hover:text-white transition-colors">
-                Twitter
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                GitHub
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Docs
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Contact
-              </Link>
+            <p className="text-xl text-center md:pl-12 pl-4">Your strategy starts with a sentence.</p>
+
+            <div className="flex justify-center mt-8 space-x-8 md:space-x-16">
+              <div className="flex flex-col space-y-4 text-center md:text-right">
+                <div>SOCIALS</div>
+                <div className="hover:cursor-pointer">Telegram</div>
+                <div className="hover:cursor-pointer">Twitter (X)</div>
+              </div>
+              <div className="flex flex-col space-y-4 text-center md:text-right">
+                <div>NAVIGATION</div>
+                <Link href={'/intent'} className="hover:cursor-pointer">
+                  Intent
+                </Link>
+                <Link href={'/identity'} className="hover:cursor-pointer">
+                  Identity
+                </Link>
+                <Link href={'/analytics'} className="hover:cursor-pointer">
+                  Analytics
+                </Link>
+                <Link href={'/dashboard'} className="hover:cursor-pointer">
+                  Dashboard
+                </Link>
+              </div>
             </div>
           </div>
-          <div className="mt-8 pt-4 border-t border-gray-800 text-center text-sm">
-            © 2025 IntentFI. All rights reserved.
-          </div>
+        </div>
+        <div className="border-b-2 border-gray-800 border-dotted mt-12"></div>
+        <div className="flex flex-col md:flex-row justify-center items-center my-4 space-y-4 md:space-x-8 md:space-y-0">
+          <div className="hover:cursor-pointer">Privacy Policy</div>
+          <div className="hover:cursor-pointer">Terms of Service</div>
+          <div className="hover:cursor-pointer">Risk Disclaimer</div>
+          <div className="hover:cursor-pointer">©2025 INTENTFI™ // ALL RIGHTS RESERVED</div>
         </div>
       </footer>
     </div>
