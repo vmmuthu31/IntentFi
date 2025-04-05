@@ -28,7 +28,7 @@ export default function VerifyPage() {
     return new SelfAppBuilder({
       appName: "IntentFi",
       scope: "5949212",
-      endpoint: "https://8301-111-235-226-130.ngrok-free.app/verify",
+      endpoint: "https://intentfi.vercel.app/api/verify",
       endpointType: "staging_https",
       logoBase64: "https://i.ibb.co/kvX4fyr/Logo-Intent-Fi.png",
       userId: address,
