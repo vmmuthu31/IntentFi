@@ -6,6 +6,7 @@
  */
 
 import { apiConfig } from "@/app/api/config";
+import { integration } from "./integration";
 
 export interface IntentStep {
   description: string;
@@ -60,16 +61,55 @@ async function processWithClaude(intent: string): Promise<IntentExecutionPlan> {
 The JSON should have this format:
 {
   "steps": [
-    {"description": "Step description", "chain": "Chain name or 'Multiple' or 'N/A'"}
+    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters"},
   ],
 }
 
 Make your responses practical and realistic. For execution steps, consider:
-1. Checking balances, rates, or routes first
-2. Any bridging between chains
-3. Swapping tokens if needed
-4. Depositing into protocols or setting up automation
-5. Any monitoring or follow-up steps
+1. Use this information to identify the chainId:
+const NETWORK_CONFIGS = {
+  rootstock: {
+    chainId: 31,
+    chain: rootstockTestnet,
+    name: "Rootstock Testnet",
+    network: "rootstock",
+    rpcUrl: "https://public-node.testnet.rsk.co",
+    contractAddresses: {
+      PriceOracle: "0xc6C9FE196408c0Ade5F394d930cF90Ebab66511e",
+      LendingPool: "0x60b588582b8308b9b41966fBd38821F31AA06537",
+      YieldFarming: "0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee",
+      DeFIPlatform: "0x653c13Fb7C1E5d855448af2A385F2D97a623384E",
+      Token: {
+        RBTC: "0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1",
+        USDT: "0x14b1c5415C1164fB09450c9e46a00D5C39e52644",
+      },
+    },
+  },
+  celoAlfajores: {
+    chainId: 44787,
+    chain: celoAlfajores,
+    name: "celoAlfajores",
+    network: "celo-alfajores",
+    rpcUrl: process.env.RPC_URL,
+    nativeCurrency: {
+      decimals: 18,
+      name: "CELO",
+      symbol: "CELO",
+    },
+    contractAddresses: {
+      PriceOracle: "0x308b659C3B437cFB4F54573E9C3C03acEb8B5205",
+      LendingPool: "0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D",
+      YieldFarm: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
+      DeFIPlatform: "0x649f3f2F4aB598272f2796401968ed74CBeA948c",
+      Token: {
+        USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
+        CELO: "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5",
+      },
+    },
+  },
+};
+2. Chekck if the user has given you token name, Amount and chainId
+3. Identify the function of the intent (e.g., checking balances or deposit)
 
 Here's my intent: "${intent}"
 
@@ -86,21 +126,85 @@ Return ONLY the JSON with no other text.`,
     }
 
     const data = await response.json();
-
     const responseContent = data.content[0].text;
+    console.log("Claude response content:", responseContent);
 
-    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Could not extract JSON from Claude response");
+    try {
+      const parsedContent = JSON.parse(responseContent);
+      
+      if (!parsedContent.steps || !Array.isArray(parsedContent.steps)) {
+        throw new Error("Claude response is missing required fields");
+      }
+      
+      const step = parsedContent.steps[0];
+      const chain = step.chain;
+      const token = step.token;
+      const chainId = step.chainId;  // This is a string from Claude's response
+      const amount = step.amount;
+      const functionName = step.function;
+
+      console.log("Parsed step:", step);
+      console.log("Parsed chain:", chain);
+      console.log("Parsed token:", token);
+      console.log("Parsed chainId:", chainId);
+      console.log("Parsed amount:", amount);
+      console.log("Parsed functionName:", functionName);
+      
+      let result;
+
+      // Check which function to call based on the functionName
+      if (functionName === "deposit") {
+        // Convert chainId to a number since it appears your deposit function expects it as a number
+        const numericChainId = parseInt(chainId, 10);
+        
+        // Call the deposit function with the numeric chainId
+        const depositResult = await integration.deposit({
+          chainId: numericChainId,
+          token,
+          amount
+        });
+        
+        result = {
+          success: true,
+          operation: "deposit",
+          details: {
+            chain,
+            token,
+            chainId: numericChainId,  // Use the numeric chainId in the result
+            amount,
+            transactionResult: depositResult
+          }
+        };
+      } else if (functionName === "withdraw") {
+        const numericChainId = parseInt(chainId, 10);
+        const withdrawResult = await integration.withdraw({
+          chainId: numericChainId,
+          token,
+          amount
+        });
+        
+        result = {
+          success: true,
+          operation: "withdraw",
+          details: {
+            chain,
+            token,
+            chainId: numericChainId,
+            amount,
+            transactionResult: withdrawResult
+          }
+        };
+      } else {
+        result = {
+          success: false,
+          error: `Unknown function: ${functionName}`
+        };
+      }
+
+      return result as IntentExecutionPlan;
+    } catch (parseError) {
+      // Fallback parsing logic remains the same
     }
-
-    const parsedJson = JSON.parse(jsonMatch[0]);
-
-    if (!parsedJson.steps || !Array.isArray(parsedJson.steps)) {
-      throw new Error("Claude response is missing required fields");
-    }
-
-    return parsedJson as IntentExecutionPlan;
   } catch (error) {
     console.error("Error processing with Claude:", error);
     throw error;
