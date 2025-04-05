@@ -536,6 +536,7 @@ const deposit = async ({
 }) => {
   try {
     const { publicClient, walletClient } = await initalizeClients({ chainId });
+    
     if (!process.env.PRIVATE_KEY) {
       throw new Error("Private key not found");
     }
@@ -1677,10 +1678,11 @@ const stake = async ({
     if (BigInt(tokenBalance as bigint) < BigInt(amount)) {
       console.log("Insufficient token balance. Getting tokens from faucet...");
 
+      const Amount = ethers.utils.parseUnits(amount, 18);
       const faucetData = encodeFunctionData({
         abi: mintABI,
         functionName: "faucet",
-        args: [BigInt(1000000000000000000000000)], // 1,000,000 tokens with 18 decimals
+        args: [Amount] // 1,000,000 tokens with 18 decimals
       });
 
       const faucetParams = {
@@ -1799,7 +1801,7 @@ const stake = async ({
         address: contractAddress.YieldFarming as `0x${string}`,
         abi: yieldFarmingABI,
         functionName: "stake",
-        args: [BigInt(poolId), BigInt(amount)],
+        args: [BigInt(poolId),ethers.utils.parseUnits(amount, 18)],
         account: account.address,
       });
       console.log("Simulation successful, proceeding with actual transaction");
@@ -1833,7 +1835,7 @@ const stake = async ({
     const stakeData = encodeFunctionData({
       abi: yieldFarmingABI,
       functionName: "stake",
-      args: [BigInt(poolId), BigInt(amount)],
+      args: [BigInt(poolId), ethers.utils.parseUnits(amount, 18)],
     });
 
     const gasLimit = BigInt(300000);
