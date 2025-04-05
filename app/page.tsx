@@ -10,6 +10,7 @@ import Capability2 from "@/app/assets/capabilities2.svg"
 import Orb from "@/app/assets/orb.svg"
 import Optimization from "@/app/assets/optimization.svg"
 import Compilance from "@/app/assets/compilance.svg"
+import FooterLogo from "@/app/assets/footerlogo.svg"
 
 
 export default function Home() {
@@ -417,31 +418,42 @@ export default function Home() {
       
 
       {/* Footer */}
-      <footer className="py-8 px-4 bg-gray-900 text-gray-400">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <div className="text-xl font-bold text-white">IntentFI</div>
-              <div className="text-sm">Cross-Chain Intent Finance</div>
+
+      <div className="border-b border-gray-800 mt-20"></div>
+
+      <footer className="mb-10 rounded-b-2xl bg-background">
+        <div className="flex flex-col md:flex-row gap- justify-around text-white pt-12 px-1">
+          <div className="flex-1">
+            <Image src={FooterLogo} alt="Footer Logo" width={400} height={400} className="mx-auto mt-8" />
+          </div>
+          <div className="flex-1">
+            <div style={{ fontFamily: 'InstrumentSerif' }} className="text-center md:text-9xl italic">
+              IntentFi
             </div>
-            <div className="flex space-x-6">
-              <Link href="#" className="hover:text-white transition-colors">
-                Twitter
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                GitHub
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Docs
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Contact
-              </Link>
+            <p className="text-xl text-center pl-12">Your strategy starts with a sentence.</p>
+
+            <div className="flex justify-center mt-8 space-x-16">
+              <div className="flex flex-col space-y-4 text-right">
+                <div>SOCIALS</div>
+                <div className="hover:cursor-pointer">Telegram</div>
+                <div className="hover:cursor-pointer">Twitter (X)</div>
+              </div>
+              <div className="flex flex-col space-y-4 text-right">
+                <div>NAVIGATION</div>
+                <Link href={'/intent'} className="hover:cursor-pointer">Intent</Link>
+                <Link href={'/identity'} className="hover:cursor-pointer">Identity</Link>
+                <Link href={'/analytics'} className="hover:cursor-pointer">Analytics</Link>
+                <Link href={'/dashboard'} className="hover:cursor-pointer">Dashboard</Link>
+              </div>
             </div>
           </div>
-          <div className="mt-8 pt-4 border-t border-gray-800 text-center text-sm">
-            © 2025 IntentFI. All rights reserved.
-          </div>
+        </div>
+        <div className="border-b-3 border-gray-800 border-dotted mt-20"></div>
+        <div className="flex justify-around items-center my-4 space-x-8">
+          <div className="hover:cursor-pointer">Privacy Policy</div>
+          <div className="hover:cursor-pointer">Terms of Service</div>
+          <div className="hover:cursor-pointer">Risk Disclaimer</div>
+          <div className="hover:cursor-pointer">©2025 INTENTFI™ // ALL RIGHTS RESERVED</div>
         </div>
       </footer>
     </div>
