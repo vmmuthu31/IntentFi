@@ -1,16 +1,9 @@
 "use client";
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AnalyticsOverview } from "@/components/analytics/analytics-overview";
 import { ChainComparison } from "@/components/analytics/chain-comparison";
 import { YieldTrends } from "@/components/analytics/yield-trends";
 import { GasUsage } from "@/components/analytics/gas-usage";
-
-// export const metadata = {
-//   title: "Analytics",
-//   description: "Cross-chain analytics and performance metrics",
-// };
 
 export default function AnalyticsPage() {
   return (
@@ -29,7 +22,8 @@ export default function AnalyticsPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-400 mt-6 mb-8 max-w-2xl mx-auto">
-              Analyze your portfolio performance and optimize your cross-chain strategy.
+              Analyze your portfolio performance and optimize your cross-chain
+              strategy.
             </p>
           </div>
 
