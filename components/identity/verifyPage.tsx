@@ -587,7 +587,7 @@ export default function VerifyPage() {
 
                   <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                     <Link href="/intent" className="flex-1">
-                      <Button className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 py-6 text-lg">
+                      <Button className="w-full bg-gradient-to-r from-orange-600 cursor-pointer to-orange-500 hover:from-orange-700 hover:to-orange-600 py-6 text-lg">
                         Go to IntentFi
                       </Button>
                     </Link>
@@ -595,7 +595,7 @@ export default function VerifyPage() {
                     <Link href="/" className="flex-1">
                       <Button
                         variant="outline"
-                        className="w-full py-6 text-lg border-zinc-700 text-white hover:bg-zinc-800"
+                        className="w-full py-6 text-lg border-zinc-700 text-black cursor-pointer hover:bg-zinc-800"
                       >
                         Return to Home
                       </Button>
