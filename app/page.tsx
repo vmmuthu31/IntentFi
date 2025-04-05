@@ -624,7 +624,7 @@ export default function Home() {
                 <Link href={"/intent"} className="hover:cursor-pointer">
                   Intent
                 </Link>
-                <Link href={"/identity"} className="hover:cursor-pointer">
+                <Link href={"/verify"} className="hover:cursor-pointer">
                   Identity
                 </Link>
                 <Link href={"/analytics"} className="hover:cursor-pointer">

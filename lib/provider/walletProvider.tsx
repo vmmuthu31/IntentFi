@@ -6,7 +6,14 @@ import {
   RainbowKitProvider,
 } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { base, celo, polygonAmoy, rootstockTestnet, saga } from "wagmi/chains";
+import {
+  base,
+  celo,
+  celoAlfajores,
+  polygonAmoy,
+  rootstockTestnet,
+  saga,
+} from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode } from "react";
 
@@ -37,7 +44,15 @@ export const sagaIFI = {
 const config = getDefaultConfig({
   appName: "IntentFI",
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "",
-  chains: [celo, saga, base, rootstockTestnet, polygonAmoy, sagaIFI],
+  chains: [
+    celo,
+    saga,
+    base,
+    rootstockTestnet,
+    polygonAmoy,
+    sagaIFI,
+    celoAlfajores,
+  ],
   ssr: true,
 });
 

@@ -44,6 +44,7 @@ export async function processIntent(
  */
 async function processWithClaude(
   intent: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   chainId: number
 ): Promise<IntentExecutionPlan> {
   try {

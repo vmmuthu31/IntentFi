@@ -74,6 +74,7 @@ export default function IntentPage() {
   const handleProcessIntent = async () => {
     setIsProcessing(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const lowerIntent = intent.toLowerCase().trim();
 
       // if (/^(hi|hello|hey|greetings|hi there|howdy|sup)/i.test(lowerIntent)) {
@@ -214,6 +215,7 @@ export default function IntentPage() {
     }, 100);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const executeIntent = async () => {
     if (!intentResult || !isConnected) return;
 
