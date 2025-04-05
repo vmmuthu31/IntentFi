@@ -87,15 +87,8 @@ Our AI parses the input and builds an **executable DAG (Directed Acyclic Graph)*
 - **AI that actually executes, not just simulates**  
   Our LLM-powered engine turns natural language into live, executable DAGs (Directed Acyclic Graphs) — orchestrating real DeFi actions like bridging, lending, vaulting, exiting, and more.
 
-- **Self-healing, risk-aware strategy automation**  
-  Strategies don’t just run — they adapt. IntentFi constantly re-optimizes based on APY shifts, gas spikes, protocol risks, and user-defined triggers. It’s autopilot with an IQ.
-
 - **Fully gasless, fully compliant — out of the box**  
   Every action is abstracted behind account abstraction and Paymaster tech. One-time KYC via Self Protocol ensures users can launch compliant strategies globally, without breaking flow.
-
-- **Open-ended, not pre-packaged**  
-  Forget rigid templates. Users define *what* they want — the system figures out *how*. That means infinite, composable intents instead of locked recipes.
-
 
 ---
 
