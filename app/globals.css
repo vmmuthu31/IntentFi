@@ -299,8 +299,9 @@ body {
 
 .glitch-text-white {
   color: #FA4C15;
+  position: relative;
   /* Optional: add a subtle base shadow using your primary color */
-  text-shadow: 1px 1px 2px white;
+  text-shadow: 0px 0px 0px white;
 }
 
 /* Standard glitch overlay using #FA4C15 */
