@@ -188,13 +188,13 @@ Return ONLY the JSON with no other text.`,
 
       if (functionName == "deposit") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const depositResult = await integration.deposit({
           chainId: numericChainId,
           token,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -207,13 +207,13 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName == "withdraw") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const withdrawResult = await integration.withdraw({
           chainId: numericChainId,
           token,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -226,14 +226,14 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName == "balanceof") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const balanceResult = await integration.getTokenBalance({
           chainId: numericChainId,
           token,
         });
-      
+
         const formattedBalance = BigInt(balanceResult).toString();
-      
+
         result = {
           steps: [
             {
@@ -249,13 +249,13 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName === "borrow") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const borrowResult = await integration.borrow({
           chainId: numericChainId,
           token,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -271,13 +271,13 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName == "repay") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const repayResult = await integration.repay({
           chainId: numericChainId,
           token,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -290,13 +290,13 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName == "stake") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const stakeResult = await integration.stake({
           chainId: numericChainId,
           poolId,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -309,13 +309,13 @@ Return ONLY the JSON with no other text.`,
         };
       } else if (functionName == "unstake") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const unstakeResult = await integration.unstake({
           chainId: numericChainId,
           poolId,
           amount,
         });
-      
+
         result = {
           steps: [
             {
@@ -326,17 +326,17 @@ Return ONLY the JSON with no other text.`,
             },
           ],
           details: {
-            token: unstakeResult.token,
+            token: unstakeResult,
             receipt: unstakeResult.receipt,
           },
         };
       } else if (functionName == "getpoolinformation") {
         const numericChainId = parseInt(chainId, 10);
-      
+
         const pools = await integration.getPoolInformation({
           chainId: numericChainId,
         });
-      
+
         result = {
           steps: [
             {
@@ -357,7 +357,6 @@ Return ONLY the JSON with no other text.`,
           ],
         };
       }
-      
 
       return result as IntentExecutionPlan;
     } catch (parseError) {
