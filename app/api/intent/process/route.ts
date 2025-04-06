@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await processIntent(intent, chainId);
+    const result = await processIntent(intent, chainId, userAddress);
 
     // Determine intent type based on the steps or content
     const intentType = determineIntentType(result.steps);
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       description: intent,
       chain: getChainName(chainId),
       type: intentType,
-      steps: result.steps
+      steps: result.steps,
     });
 
     return NextResponse.json({
@@ -57,43 +57,47 @@ export async function POST(request: Request) {
 }
 
 // Helper function to determine intent type based on steps
-function determineIntentType(steps: Array<{description: string, chain: string}>): string {
-  const description = steps.map(step => step.description.toLowerCase()).join(' ');
-  
-  if (description.includes('deposit') || description.includes('supply')) {
-    return 'deposit';
-  } else if (description.includes('withdraw')) {
-    return 'withdraw';
-  } else if (description.includes('borrow')) {
-    return 'borrow';
-  } else if (description.includes('repay')) {
-    return 'repay';
-  } else if (description.includes('swap') || description.includes('exchange')) {
-    return 'swap';
-  } else if (description.includes('stake')) {
-    return 'stake';
-  } else if (description.includes('unstake')) {
-    return 'unstake';
-  } else if (description.includes('claim')) {
-    return 'claim';
-  } else if (description.includes('transfer') || description.includes('send')) {
-    return 'transfer';
+function determineIntentType(
+  steps: Array<{ description: string; chain: string }>
+): string {
+  const description = steps
+    .map((step) => step.description.toLowerCase())
+    .join(" ");
+
+  if (description.includes("deposit") || description.includes("supply")) {
+    return "deposit";
+  } else if (description.includes("withdraw")) {
+    return "withdraw";
+  } else if (description.includes("borrow")) {
+    return "borrow";
+  } else if (description.includes("repay")) {
+    return "repay";
+  } else if (description.includes("swap") || description.includes("exchange")) {
+    return "swap";
+  } else if (description.includes("stake")) {
+    return "stake";
+  } else if (description.includes("unstake")) {
+    return "unstake";
+  } else if (description.includes("claim")) {
+    return "claim";
+  } else if (description.includes("transfer") || description.includes("send")) {
+    return "transfer";
   } else {
-    return 'other';
+    return "other";
   }
 }
 
 // Helper function to get chain name from chainId
 function getChainName(chainId?: number): string {
-  if (!chainId) return 'unknown';
-  
+  if (!chainId) return "unknown";
+
   switch (chainId) {
     case 44787:
-      return 'celoAlfajores';
+      return "celoAlfajores";
     case 31337:
-      return 'localhost';
+      return "localhost";
     case 31:
-      return 'rootstock';
+      return "rootstock";
     default:
       return `chain-${chainId}`;
   }
