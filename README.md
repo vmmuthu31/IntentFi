@@ -171,5 +171,6 @@ We're building DeFi for the next billion users — by making it invisible.
 ## 📬 Contact
 For demos, integration requests, or questions:  
 - **Website:** https://intentfi.vercel.app\
+- **Pitch Deck:** [Click here](https://www.figma.com/deck/aar51g518VIAGSWjF2pUAJ/IntentFi?node-id=2-567&viewport=-1085%2C-16%2C0.55&t=DYgN1lbaaMBI6dv1-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1)
 - Built in EthTaipei <3
 
