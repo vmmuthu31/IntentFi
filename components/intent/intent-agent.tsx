@@ -659,8 +659,33 @@ export default function IntentAgent({
     // Set processing state
     setIsProcessing(true);
 
+    // Check if this is a greeting
+    const lowerIntent = formattedIntent.toLowerCase().trim();
+    if (
+      /^(hi|hello|hey|greetings|howdy|what's up|sup|hola|good morning|good afternoon|good evening)$/i.test(
+        lowerIntent
+      )
+    ) {
+      // Don't process greetings as intents
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content:
+            "Hello! I'm your IntentFi financial assistant. I can help you with DeFi operations, investments, and financial strategies. What would you like to do today?",
+          timestamp: new Date(),
+          actions: [
+            { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+            { label: "See example intents", action: "SHOW_EXAMPLES" },
+            { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+          ],
+        },
+      ]);
+      setIsProcessing(false);
+      return;
+    }
+
     // Check if this is a non-financial query before passing to backend
-    const lowerIntent = formattedIntent.toLowerCase();
     const financialKeywords = [
       "defi",
       "crypto",
@@ -749,9 +774,6 @@ export default function IntentAgent({
       return;
     }
 
-    // Pass the intent to the parent component for processing
-    onCreateIntent(formattedIntent);
-
     // Special case for pool info - show more detailed response
     if (formattedIntent.toLowerCase().includes("pool info")) {
       // Add a processing message
@@ -825,24 +847,50 @@ export default function IntentAgent({
       },
     ]);
 
-    // Simulate processing time or make a real API call
-    setTimeout(() => {
-      // Replace loading message with completion message
+    // Process the intent
+    // Need to call this in a try/catch since onCreateIntent may not return a Promise
+    try {
+      // Call the parent component's handler
+      onCreateIntent(formattedIntent);
+
+      // Add a timeout to show the success message
+      setTimeout(() => {
+        // Replace loading message with completion message
+        setMessages((prev) => [
+          ...prev.filter((msg) => !msg.isLoading),
+          {
+            role: "assistant",
+            content:
+              "Your intent has been processed. You can view the execution plan below.",
+            timestamp: new Date(),
+            actions: [
+              { label: "Clear chat", action: "CLEAR_CHAT" },
+              { label: "Create new intent", action: "SHOW_EXAMPLES" },
+            ],
+          },
+        ]);
+        setIsProcessing(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error processing intent:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
+      // Show user-friendly error message
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         {
           role: "assistant",
-          content:
-            "Your intent has been processed. You can view the execution plan below.",
+          content: `I encountered an error while processing your intent: ${errorMessage}. Please try again with a different command or check your network connection.`,
           timestamp: new Date(),
           actions: [
-            { label: "Clear chat", action: "CLEAR_CHAT" },
-            { label: "Create new intent", action: "SHOW_EXAMPLES" },
+            { label: "See example intents", action: "SHOW_EXAMPLES" },
+            { label: "Show available functions", action: "SHOW_FUNCTIONS" },
           ],
         },
       ]);
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   // Fetch pool information from API
@@ -1261,6 +1309,34 @@ export default function IntentAgent({
       case "SUGGEST_INTENT":
       case "DIRECT_INTENT":
         if (intent) {
+          // Check if this is a greeting - if so, don't process it as an intent
+          const lowerIntent = intent.toLowerCase().trim();
+          if (
+            /^(hi|hello|hey|greetings|howdy|what's up|sup|hola|good morning|good afternoon|good evening)$/i.test(
+              lowerIntent
+            )
+          ) {
+            // Simply respond with a greeting instead of processing
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content:
+                  "Hello! I'm your IntentFi financial assistant. I can help you with DeFi operations, investments, and financial strategies. What would you like to do today?",
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Show available functions",
+                    action: "SHOW_FUNCTIONS",
+                  },
+                  { label: "See example intents", action: "SHOW_EXAMPLES" },
+                  { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+                ],
+              },
+            ]);
+            return;
+          }
+
           // If intent contains [TOKEN] placeholder, replace it with a default or first available token
           let processedIntent = intent;
           if (intent.includes("[TOKEN]")) {

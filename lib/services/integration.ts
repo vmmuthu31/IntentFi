@@ -103,12 +103,42 @@ const initalizeClients = async ({ chainId }: { chainId: number }) => {
     throw new Error("Private key not found");
   }
   const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-  const networkConfig = Object.values(NETWORK_CONFIGS).find(
-    (config) => config.chainId === chainId
+
+  // Convert chainId to number if it's a string
+  const numericChainId =
+    typeof chainId === "string" ? parseInt(chainId, 10) : chainId;
+
+  // Find matching network config
+  let networkConfig = Object.values(NETWORK_CONFIGS).find(
+    (config) => config.chainId === numericChainId
   );
+
+  // If network config not found, use default based on the closest match or fallback
   if (!networkConfig) {
-    throw new Error("Network config not found");
+    console.warn(
+      `Network config not found for chainId ${numericChainId}. Using fallback.`
+    );
+
+    // Try to map common chain IDs that might be confused
+    if (numericChainId === 42220) {
+      // Celo Mainnet
+      console.log(
+        "Detected Celo Mainnet ID, falling back to Celo Alfajores testnet"
+      );
+      networkConfig = NETWORK_CONFIGS.celoAlfajores;
+    } else if (numericChainId === 30) {
+      // Rootstock Mainnet
+      console.log(
+        "Detected Rootstock Mainnet ID, falling back to Rootstock testnet"
+      );
+      networkConfig = NETWORK_CONFIGS.rootstock;
+    } else {
+      // Default fallback to Celo Alfajores
+      console.log("Using default fallback to Celo Alfajores testnet");
+      networkConfig = NETWORK_CONFIGS.celoAlfajores;
+    }
   }
+
   const chain = networkConfig.chain;
   const publicClient = createPublicClient({
     chain,

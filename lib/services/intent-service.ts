@@ -196,64 +196,122 @@ Return ONLY the JSON with no other text.`,
       if (functionName == "deposit") {
         const numericChainId = parseInt(chainId, 10);
 
-        const depositResult = await integration.deposit({
-          chainId: numericChainId,
-          token,
-          amount,
-        });
+        try {
+          const depositResult = await integration.deposit({
+            chainId: numericChainId,
+            token,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Deposited ${amount} ${token} on ${chain}.`,
-              transactionHash: depositResult.transactionHash,
-              status: depositResult.success ? "succeeded" : "failed",
-              chain,
-            },
-          ],
-        };
+          result = {
+            steps: [
+              {
+                description: `Deposited ${amount} ${token} on ${chain}.`,
+                transactionHash: depositResult.transactionHash,
+                status: depositResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error("Error during deposit operation:", error);
+          // Create a user-friendly error message
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during deposit";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to deposit ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "withdraw") {
         const numericChainId = parseInt(chainId, 10);
 
-        const withdrawResult = await integration.withdraw({
-          chainId: numericChainId,
-          token,
-          amount,
-        });
+        try {
+          const withdrawResult = await integration.withdraw({
+            chainId: numericChainId,
+            token,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Withdrew ${amount} ${token} from ${chain}.`,
-              transactionHash: withdrawResult.transactionHash,
-              status: withdrawResult.success ? "succeeded" : "failed",
-              chain,
-            },
-          ],
-        };
+          result = {
+            steps: [
+              {
+                description: `Withdrew ${amount} ${token} from ${chain}.`,
+                transactionHash: withdrawResult.transactionHash,
+                status: withdrawResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error("Error during withdraw operation:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during withdrawal";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to withdraw ${amount} ${token} from ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "balanceof") {
         const numericChainId = parseInt(chainId, 10);
 
-        const balanceResult = await integration.getTokenBalance({
-          chainId: numericChainId,
-          token,
-        });
-
-        const formattedBalance = BigInt(balanceResult).toString();
-
-        result = {
-          steps: [
-            {
-              description: `Checked balance of ${token} on ${chain} is ${formattedBalance}.`,
-              chain,
-            },
-          ],
-          details: {
-            token,
-            balance: formattedBalance,
+        try {
+          const balanceResult = await integration.getTokenBalance({
             chainId: numericChainId,
-          },
-        };
+            token,
+          });
+
+          const formattedBalance = BigInt(balanceResult).toString();
+
+          result = {
+            steps: [
+              {
+                description: `Checked balance of ${token} on ${chain} is ${formattedBalance}.`,
+                chain,
+              },
+            ],
+            details: {
+              token,
+              balance: formattedBalance,
+              chainId: numericChainId,
+            },
+          };
+        } catch (error) {
+          console.error("Error during balance check:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred when checking balance";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to check balance of ${token} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName === "borrow") {
         const numericChainId = parseInt(chainId, 10);
 
@@ -275,103 +333,198 @@ Return ONLY the JSON with no other text.`,
           };
         }
 
-        const borrowResult = await integration.borrow({
-          chainId: numericChainId,
-          token,
-          amount,
-        });
+        try {
+          const borrowResult = await integration.borrow({
+            chainId: numericChainId,
+            token,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Borrowed ${amount} ${token} on ${chain}.`,
-              transactionHash: borrowResult.transactionHash,
-              status: borrowResult.success ? "succeeded" : "failed",
-              chain,
+          result = {
+            steps: [
+              {
+                description: `Borrowed ${amount} ${token} on ${chain}.`,
+                transactionHash: borrowResult.transactionHash,
+                status: borrowResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+            details: {
+              receipt: borrowResult.receipt,
             },
-          ],
-          details: {
-            receipt: borrowResult.receipt,
-          },
-        };
+          };
+        } catch (error) {
+          console.error("Error during borrowing operation:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during borrowing";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to borrow ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "repay") {
         const numericChainId = parseInt(chainId, 10);
 
-        const repayResult = await integration.repay({
-          chainId: numericChainId,
-          token,
-          amount,
-        });
+        try {
+          const repayResult = await integration.repay({
+            chainId: numericChainId,
+            token,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Repaid ${amount} ${token} on ${chain}.`,
-              transactionHash: repayResult.transactionHash,
-              status: repayResult.success ? "succeeded" : "failed",
-              chain,
-            },
-          ],
-        };
+          result = {
+            steps: [
+              {
+                description: `Repaid ${amount} ${token} on ${chain}.`,
+                transactionHash: repayResult.transactionHash,
+                status: repayResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error("Error during repay operation:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during repayment";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to repay ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "stake") {
         const numericChainId = parseInt(chainId, 10);
 
-        const stakeResult = await integration.stake({
-          chainId: numericChainId,
-          poolId,
-          amount,
-        });
+        try {
+          const stakeResult = await integration.stake({
+            chainId: numericChainId,
+            poolId,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Staked ${amount} into pool ${poolId} on ${chain}.`,
-              transactionHash: stakeResult.transactionHash,
-              status: stakeResult.success ? "succeeded" : "failed",
-              chain,
-            },
-          ],
-        };
+          result = {
+            steps: [
+              {
+                description: `Staked ${amount} into pool ${poolId} on ${chain}.`,
+                transactionHash: stakeResult.transactionHash,
+                status: stakeResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error("Error during staking operation:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during staking";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to stake ${amount} into pool ${poolId} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "unstake") {
         const numericChainId = parseInt(chainId, 10);
 
-        const unstakeResult = await integration.unstake({
-          chainId: numericChainId,
-          poolId,
-          amount,
-        });
+        try {
+          const unstakeResult = await integration.unstake({
+            chainId: numericChainId,
+            poolId,
+            amount,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Unstaked ${amount} from pool ${poolId} on ${chain}.`,
-              transactionHash: unstakeResult.transactionHash,
-              status: unstakeResult.success ? "succeeded" : "failed",
-              chain,
+          result = {
+            steps: [
+              {
+                description: `Unstaked ${amount} from pool ${poolId} on ${chain}.`,
+                transactionHash: unstakeResult.transactionHash,
+                status: unstakeResult.success ? "succeeded" : "failed",
+                chain,
+              },
+            ],
+            details: {
+              token: unstakeResult,
+              receipt: unstakeResult.receipt,
             },
-          ],
-          details: {
-            token: unstakeResult,
-            receipt: unstakeResult.receipt,
-          },
-        };
+          };
+        } catch (error) {
+          console.error("Error during unstaking operation:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during unstaking";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to unstake ${amount} from pool ${poolId} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else if (functionName == "getpoolinformation") {
         const numericChainId = parseInt(chainId, 10);
 
-        const pools = await integration.getPoolInformation({
-          chainId: numericChainId,
-        });
+        try {
+          const pools = await integration.getPoolInformation({
+            chainId: numericChainId,
+          });
 
-        result = {
-          steps: [
-            {
-              description: `Retrieved information for ${pools.length} pools on ${chain}.`,
-              data: pools,
-              chain,
-            },
-          ],
-          data: pools,
-        };
+          result = {
+            steps: [
+              {
+                description: `Retrieved information for ${pools.length} pools on ${chain}.`,
+                data: pools,
+                chain,
+              },
+            ],
+            data: pools,
+          };
+        } catch (error) {
+          console.error("Error retrieving pool information:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred when retrieving pool information";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to retrieve pool information on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
       } else {
         result = {
           steps: [
