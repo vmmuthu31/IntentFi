@@ -468,6 +468,106 @@ export default function IntentAgent({
     tokens?: Token[];
     actions?: { label: string; action: string; intent?: string }[];
   } => {
+    const lowerMessage = message.toLowerCase();
+
+    // Check for greetings
+    if (
+      /^(hi|hello|hey|greetings|howdy|what's up|sup|hola|good morning|good afternoon|good evening)$/i.test(
+        lowerMessage.trim()
+      )
+    ) {
+      return {
+        response:
+          "Hello! I'm your IntentFi financial assistant. I can help you with DeFi operations, investments, and financial strategies. What would you like to do today?",
+        actions: [
+          { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+          { label: "See example intents", action: "SHOW_EXAMPLES" },
+          { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+        ],
+      };
+    }
+
+    // Financial keywords that the bot should understand
+    const financialKeywords = [
+      "defi",
+      "crypto",
+      "token",
+      "yield",
+      "stake",
+      "borrow",
+      "lend",
+      "deposit",
+      "withdraw",
+      "invest",
+      "wallet",
+      "balance",
+      "transfer",
+      "bridge",
+      "swap",
+      "eth",
+      "btc",
+      "celo",
+      "usdc",
+      "usdt",
+      "aave",
+      "compound",
+      "pool",
+      "liquidity",
+      "collateral",
+      "apr",
+      "apy",
+      "interest",
+      "blockchain",
+      "network",
+      "chain",
+      "transaction",
+      "gas",
+      "fee",
+      "protocol",
+      "exchange",
+      "trading",
+      "farm",
+      "governance",
+      "dao",
+      "nft",
+      "asset",
+      "portfolio",
+      "profit",
+      "loss",
+      "risk",
+      "reward",
+      "price",
+      "value",
+      "market",
+      "fund",
+      "strategy",
+      "return",
+    ];
+
+    // Check if message has any financial keywords
+    const hasFinancialKeywords = financialKeywords.some((keyword) =>
+      lowerMessage.includes(keyword)
+    );
+
+    // If it's a general knowledge question or has no financial context
+    if (
+      lowerMessage.includes("who is") ||
+      (lowerMessage.includes("what is") && !hasFinancialKeywords) ||
+      (lowerMessage.includes("when did") && !hasFinancialKeywords) ||
+      (lowerMessage.includes("where is") && !hasFinancialKeywords) ||
+      (!hasFinancialKeywords && lowerMessage.includes("?"))
+    ) {
+      return {
+        response:
+          "I'm your IntentFi financial assistant, designed specifically to help with DeFi operations and financial strategies. I can't answer general knowledge questions, but I'd be happy to help with any financial queries. What would you like to know about your finances or DeFi operations?",
+        actions: [
+          { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+          { label: "See example intents", action: "SHOW_EXAMPLES" },
+          { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+        ],
+      };
+    }
+
     // First try to match direct intent patterns with variable extraction
     for (const pattern of INTENT_PATTERNS) {
       const matches = message.match(pattern.pattern);
@@ -558,6 +658,96 @@ export default function IntentAgent({
   const processIntent = (formattedIntent: string) => {
     // Set processing state
     setIsProcessing(true);
+
+    // Check if this is a non-financial query before passing to backend
+    const lowerIntent = formattedIntent.toLowerCase();
+    const financialKeywords = [
+      "defi",
+      "crypto",
+      "token",
+      "yield",
+      "stake",
+      "borrow",
+      "lend",
+      "deposit",
+      "withdraw",
+      "invest",
+      "wallet",
+      "balance",
+      "transfer",
+      "bridge",
+      "swap",
+      "eth",
+      "btc",
+      "celo",
+      "usdc",
+      "usdt",
+      "aave",
+      "compound",
+      "pool",
+      "liquidity",
+      "collateral",
+      "apr",
+      "apy",
+      "interest",
+      "blockchain",
+      "network",
+      "chain",
+      "transaction",
+      "gas",
+      "fee",
+      "protocol",
+      "exchange",
+      "trading",
+      "farm",
+      "governance",
+      "dao",
+      "nft",
+      "asset",
+      "portfolio",
+      "profit",
+      "loss",
+      "risk",
+      "reward",
+      "price",
+      "value",
+      "market",
+      "fund",
+      "strategy",
+      "return",
+    ];
+
+    // Check if intent has any financial keywords
+    const hasFinancialKeywords = financialKeywords.some((keyword) =>
+      lowerIntent.includes(keyword)
+    );
+
+    // Handle non-financial queries
+    if (
+      lowerIntent.includes("who is") ||
+      (lowerIntent.includes("what is") && !hasFinancialKeywords) ||
+      (lowerIntent.includes("when did") && !hasFinancialKeywords) ||
+      (lowerIntent.includes("where is") && !hasFinancialKeywords) ||
+      (!hasFinancialKeywords && lowerIntent.includes("?"))
+    ) {
+      // Display error message instead of processing with backend
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content:
+            "I'm your IntentFi financial assistant focused on DeFi operations and financial strategies. I can't answer general knowledge questions or process non-financial intents. How can I help with your financial needs today?",
+          timestamp: new Date(),
+          actions: [
+            { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+            { label: "See example intents", action: "SHOW_EXAMPLES" },
+            { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+          ],
+        },
+      ]);
+      setIsProcessing(false);
+      return;
+    }
 
     // Pass the intent to the parent component for processing
     onCreateIntent(formattedIntent);
@@ -804,8 +994,33 @@ export default function IntentAgent({
 
     setMessages((prev) => [...prev, userMessage]);
 
+    // Check for greetings first
+    const lowerIntent = input.toLowerCase().trim();
+    if (
+      /^(hi|hello|hey|greetings|howdy|what's up|sup|hola|good morning|good afternoon|good evening)$/i.test(
+        lowerIntent
+      )
+    ) {
+      // Handle greetings specially - don't run them as intents
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "Hello! I'm your IntentFi financial assistant. I can help you with DeFi operations, investments, and financial strategies. What would you like to do today?",
+          timestamp: new Date(),
+          actions: [
+            { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+            { label: "See example intents", action: "SHOW_EXAMPLES" },
+            { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+          ],
+        },
+      ]);
+      setInput("");
+      return;
+    }
+
     // Pre-process the intent to check if it's a direct function call
-    const lowerIntent = input.toLowerCase();
     let directFunctionCall = false;
 
     // Try to match against specific function patterns with parameters

@@ -539,7 +539,13 @@ const deposit = async ({
     const allowances = await checkAllowance({ chainId });
     const tokenAllowance = allowances.find((a) => a.token === token);
 
-    if (!tokenAllowance || BigInt(tokenAllowance.allowance) < BigInt(amount)) {
+    // Convert amount to Wei (parseUnits) before comparing with BigInt
+    const amountInWei = parseUnits(amount, 18).toString();
+
+    if (
+      !tokenAllowance ||
+      BigInt(tokenAllowance.allowance) < BigInt(amountInWei)
+    ) {
       const approvalResults = await approveWithWagmi({ chainId });
       console.log("Approval results:", JSON.stringify(approvalResults));
 
@@ -550,7 +556,7 @@ const deposit = async ({
 
       if (
         !updatedTokenAllowance ||
-        BigInt(updatedTokenAllowance.allowance) < BigInt(amount)
+        BigInt(updatedTokenAllowance.allowance) < BigInt(amountInWei)
       ) {
         throw new Error(`Failed to approve enough ${token} tokens for deposit`);
       }
@@ -559,14 +565,15 @@ const deposit = async ({
     // Check token balance
     const tokenBalance = await getTokenBalance({ chainId, token });
 
-    if (BigInt(tokenBalance) < BigInt(amount)) {
+    // Convert amount to Wei for balance comparison
+    if (BigInt(tokenBalance) < BigInt(amountInWei)) {
       const faucetResults = await fundFaucet({ chainId });
       console.log("Faucet results:", JSON.stringify(faucetResults));
 
       // Verify balance was updated
       const updatedBalance = await getTokenBalance({ chainId, token });
 
-      if (BigInt(updatedBalance) < BigInt(amount)) {
+      if (BigInt(updatedBalance) < BigInt(amountInWei)) {
         throw new Error(`Failed to get enough ${token} tokens from faucet`);
       }
     }
@@ -711,10 +718,12 @@ const withdraw = async ({
 
     // Check token balance
     const tokenBalance = await getTokenBalance({ chainId, token });
-
     console.log(`${token} balance:`, tokenBalance);
 
-    if (BigInt(tokenBalance) < BigInt(amount)) {
+    // Convert amount to Wei for balance comparison
+    const amountInWei = parseUnits(amount, 18).toString();
+
+    if (BigInt(tokenBalance) < BigInt(amountInWei)) {
       console.log(`Insufficient ${token} balance, getting from faucet...`);
       const faucetResults = await fundFaucet({ chainId });
       console.log("Faucet results:", JSON.stringify(faucetResults));
@@ -722,7 +731,7 @@ const withdraw = async ({
       // Verify balance was updated
       const updatedBalance = await getTokenBalance({ chainId, token });
 
-      if (BigInt(updatedBalance) < BigInt(amount)) {
+      if (BigInt(updatedBalance) < BigInt(amountInWei)) {
         throw new Error(`Failed to get enough ${token} tokens from faucet`);
       }
     }
@@ -867,6 +876,10 @@ const borrow = async ({
       throw new Error(`Token ${token} is not supported on this chain`);
     }
 
+    // Convert amount to Wei once for all comparisons
+    const amountInWei = parseUnits(amount, 18);
+    const amountInWeiString = amountInWei.toString();
+
     // Check if the lending pool has sufficient liquidity
     try {
       const getAvailableLiquidity = await publicClient.readContract({
@@ -877,9 +890,8 @@ const borrow = async ({
       });
 
       const liquidityBigInt = getAvailableLiquidity as bigint;
-      const requestedAmount = parseUnits(amount, 18);
 
-      if (liquidityBigInt < BigInt(requestedAmount.toString())) {
+      if (liquidityBigInt < BigInt(amountInWeiString)) {
         return {
           success: false,
           error: "Insufficient liquidity in lending pool",
@@ -920,7 +932,7 @@ const borrow = async ({
         const requestedAmountInETH = await getTokenValueInETH(
           publicClient,
           tokenAddress,
-          BigInt(parseUnits(amount, 18).toString()),
+          BigInt(amountInWeiString),
           contractAddress
         );
 
@@ -949,7 +961,8 @@ const borrow = async ({
       }
     }
 
-    const tokenAmount = parseUnits(amount, 18);
+    // Use the previously parsed amount
+    const tokenAmount = amountInWei;
 
     // Prepare transaction parameters
     const data = encodeFunctionData({
@@ -1177,6 +1190,7 @@ const repay = async ({
       ];
     const chain = networkConfig.chain;
 
+    // Convert amount to Wei once for all comparisons
     const tokenAmount = parseUnits(amount, 18);
 
     const data = encodeFunctionData({
@@ -1872,8 +1886,12 @@ const stake = async ({
     });
     console.log(`Token balance: ${tokenBalance}`);
 
+    // Convert amount to Wei for consistent comparison
+    const amountInWei = ethers.utils.parseUnits(amount, 18);
+    const amountInWeiString = amountInWei.toString();
+
     // If balance is insufficient, use faucet to get tokens
-    if (BigInt(tokenBalance as bigint) < BigInt(amount)) {
+    if (BigInt(tokenBalance as bigint) < BigInt(amountInWeiString)) {
       console.log("Insufficient token balance. Getting tokens from faucet...");
 
       const Amount = ethers.utils.parseUnits(amount, 18);
@@ -1923,7 +1941,7 @@ const stake = async ({
       });
       console.log(`Updated token balance after faucet: ${updatedBalance}`);
 
-      if (BigInt(updatedBalance as bigint) < BigInt(amount)) {
+      if (BigInt(updatedBalance as bigint) < BigInt(amountInWeiString)) {
         return {
           success: false,
           error: "Still insufficient balance after faucet",
@@ -1946,7 +1964,7 @@ const stake = async ({
     console.log(`Token allowance: ${tokenAllowance}`);
 
     // If allowance is not enough, approve tokens first
-    if (BigInt(tokenAllowance as bigint) < BigInt(amount)) {
+    if (BigInt(tokenAllowance as bigint) < BigInt(amountInWeiString)) {
       console.log("Approving tokens for staking...");
 
       const approveData = encodeFunctionData({
