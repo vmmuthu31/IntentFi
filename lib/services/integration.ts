@@ -27,6 +27,8 @@ import {
   executeSwap as goatExecuteSwap,
   GoatSwapQuote,
 } from "./goat-sdk-service";
+import { Web3Provider } from "@/components/intent/utils/token-utils";
+import { Provider } from "./goat-sdk-service";
 
 type TransactionRequest = {
   account: Account;
@@ -2620,22 +2622,11 @@ const emergencyWithdraw = async ({
 // Add swap quote parameters
 interface SwapQuoteParams {
   chainId: number;
-  provider: any;
+  provider: Provider;
   address: string;
   inputToken: string;
   outputToken: string;
   amount: string;
-}
-
-// Add swap parameters
-interface SwapParams {
-  chainId: number;
-  provider: any;
-  address: string;
-  inputToken: string;
-  outputToken: string;
-  amount: string;
-  slippage?: number;
 }
 
 /**
@@ -2663,40 +2654,15 @@ export const integration = {
   getTokenBalancesWithGoat: async (
     chainId: number,
     address: string,
-    provider: any
+    provider: Web3Provider
   ) => {
-    return getTokenBalances(chainId, address, provider);
+    return getTokenBalances(chainId, address, provider as unknown as Provider);
   },
   getSwapQuote: async (params: SwapQuoteParams): Promise<GoatSwapQuote> => {
-    const { chainId, provider, address, inputToken, outputToken, amount } =
-      params;
-    return goatGetSwapQuote(
-      chainId,
-      provider,
-      address,
-      inputToken,
-      outputToken,
-      amount
-    );
+    const { inputToken, outputToken, amount } = params;
+    return goatGetSwapQuote(inputToken, outputToken, amount);
   },
-  executeSwap: async (params: SwapParams): Promise<string> => {
-    const {
-      chainId,
-      provider,
-      address,
-      inputToken,
-      outputToken,
-      amount,
-      slippage,
-    } = params;
-    return goatExecuteSwap(
-      chainId,
-      provider,
-      address,
-      inputToken,
-      outputToken,
-      amount,
-      slippage
-    );
+  executeSwap: async (): Promise<string> => {
+    return goatExecuteSwap();
   },
 };

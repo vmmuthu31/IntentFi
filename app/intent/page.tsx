@@ -8,7 +8,7 @@ import { IntentHistory } from "@/components/intent/intent-history";
 import { IntentExecutionPlan } from "@/lib/services/intent-service";
 import GlitchText from "@/components/animations/glitch";
 import Link from "next/link";
-import IntentAgent from "@/components/intent/intent-agent";
+import IntentAgent from "@/components/intent/IntentAgent";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
