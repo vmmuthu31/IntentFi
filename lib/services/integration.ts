@@ -21,6 +21,12 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celoAlfajores, rootstockTestnet } from "viem/chains";
+import {
+  getTokenBalances,
+  getSwapQuote as goatGetSwapQuote,
+  executeSwap as goatExecuteSwap,
+  GoatSwapQuote,
+} from "./goat-sdk-service";
 
 type TransactionRequest = {
   account: Account;
@@ -2611,6 +2617,30 @@ const emergencyWithdraw = async ({
   }
 };
 
+// Add swap quote parameters
+interface SwapQuoteParams {
+  chainId: number;
+  provider: any;
+  address: string;
+  inputToken: string;
+  outputToken: string;
+  amount: string;
+}
+
+// Add swap parameters
+interface SwapParams {
+  chainId: number;
+  provider: any;
+  address: string;
+  inputToken: string;
+  outputToken: string;
+  amount: string;
+  slippage?: number;
+}
+
+/**
+ * Integration service object with methods for DeFi operations
+ */
 export const integration = {
   formatUnits,
   parseUnits,
@@ -2630,4 +2660,43 @@ export const integration = {
   unstake,
   claimRewards,
   emergencyWithdraw,
+  getTokenBalancesWithGoat: async (
+    chainId: number,
+    address: string,
+    provider: any
+  ) => {
+    return getTokenBalances(chainId, address, provider);
+  },
+  getSwapQuote: async (params: SwapQuoteParams): Promise<GoatSwapQuote> => {
+    const { chainId, provider, address, inputToken, outputToken, amount } =
+      params;
+    return goatGetSwapQuote(
+      chainId,
+      provider,
+      address,
+      inputToken,
+      outputToken,
+      amount
+    );
+  },
+  executeSwap: async (params: SwapParams): Promise<string> => {
+    const {
+      chainId,
+      provider,
+      address,
+      inputToken,
+      outputToken,
+      amount,
+      slippage,
+    } = params;
+    return goatExecuteSwap(
+      chainId,
+      provider,
+      address,
+      inputToken,
+      outputToken,
+      amount,
+      slippage
+    );
+  },
 };

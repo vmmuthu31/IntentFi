@@ -16,6 +16,416 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { INTENT_PATTERNS } from "@/lib/services/intent_patterns";
+import { financialKeywords } from "@/lib/services/financialKeywords";
+import { ethers } from "ethers";
+import axios from "axios";
+import { integration } from "@/lib/services/integration";
+
+// Minimal ERC20 ABI for fetching token information and balances
+const ERC20_ABI = [
+  // Read-only functions
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+  "function name() view returns (string)",
+];
+
+// Common token address mapping by chain ID
+const CHAIN_TOKEN_ADDRESSES: Record<number, Record<string, string>> = {
+  // Ethereum Mainnet
+  1: {
+    USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    WETH: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    LINK: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+  },
+  // Polygon
+  137: {
+    USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    DAI: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+    WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+    WMATIC: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+  },
+  // Celo
+  42220: {
+    CELO: "0x471EcE3750Da237f93B8E339c536989b8978a438",
+    cUSD: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+    cEUR: "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73",
+  },
+  // Arbitrum
+  42161: {
+    ARB: "0x912CE59144191C1204E64559FE8253a0e49E6548",
+    USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+    WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+  },
+  // Testnet fallbacks - using placeholders
+  44787: {
+    // Celo Alfajores
+    CELO: "0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9",
+    cUSD: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
+    cEUR: "0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F",
+  },
+  31: {
+    // Rootstock testnet
+    RBTC: "0x0000000000000000000000000000000000000000", // Native token
+    DOC: "0xCB46c0ddc60D18eFEB0E586C17Af6ea36452Dae0", // Example address
+  },
+};
+
+// Helper function to get native token symbol by chain ID
+const getNativeTokenSymbol = (chainId: number): string => {
+  switch (chainId) {
+    case 1:
+      return "ETH";
+    case 137:
+      return "MATIC";
+    case 56:
+      return "BNB";
+    case 42220:
+    case 44787:
+      return "CELO";
+    case 42161:
+      return "ETH"; // Arbitrum uses ETH
+    case 31:
+      return "RBTC"; // Rootstock
+    case 2743859179913000:
+      return "IFI"; // Saga IFI
+    default:
+      return "ETH";
+  }
+};
+
+// Helper function to get native token name by chain ID
+const getNativeTokenName = (chainId: number): string => {
+  switch (chainId) {
+    case 1:
+      return "Ethereum";
+    case 137:
+      return "Polygon";
+    case 56:
+      return "Binance Coin";
+    case 42220:
+    case 44787:
+      return "Celo";
+    case 42161:
+      return "Ethereum"; // Arbitrum uses ETH
+    case 31:
+      return "Rootstock BTC";
+    case 2743859179913000:
+      return "IntentFi";
+    default:
+      return "Ethereum";
+  }
+};
+
+// Helper function to get icon URL for native token
+const getNativeTokenIcon = (symbol: string): string => {
+  switch (symbol) {
+    case "ETH":
+      return "https://cryptologos.cc/logos/ethereum-eth-logo.png";
+    case "MATIC":
+      return "https://cryptologos.cc/logos/polygon-matic-logo.png";
+    case "BNB":
+      return "https://cryptologos.cc/logos/bnb-bnb-logo.png";
+    case "CELO":
+      return "https://cryptologos.cc/logos/celo-celo-logo.png";
+    case "RBTC":
+      return "https://cryptologos.cc/logos/rootstock-rbtc-logo.png";
+    case "IFI":
+      return "https://cryptologos.cc/logos/crypto-com-chain-cro-logo.png"; // Placeholder
+    default:
+      return "https://cryptologos.cc/logos/ethereum-eth-logo.png";
+  }
+};
+
+// Helper function to get chain name by chain ID
+const getChainName = (chainId: number): string => {
+  switch (chainId) {
+    case 1:
+      return "Ethereum";
+    case 137:
+      return "Polygon";
+    case 56:
+      return "Binance Smart Chain";
+    case 42220:
+      return "Celo";
+    case 44787:
+      return "Celo Alfajores";
+    case 42161:
+      return "Arbitrum";
+    case 31:
+      return "Rootstock";
+    case 2743859179913000:
+      return "Saga IFI";
+    default:
+      return `Chain ${chainId}`;
+  }
+};
+
+// Helper function to get CoinGecko token ID from symbol
+const getCoingeckoId = (symbol: string): string | null => {
+  const normalizedSymbol = symbol.toUpperCase();
+  const idMapping: Record<string, string> = {
+    ETH: "ethereum",
+    WETH: "weth",
+    BTC: "bitcoin",
+    WBTC: "wrapped-bitcoin",
+    USDC: "usd-coin",
+    USDT: "tether",
+    DAI: "dai",
+    MATIC: "matic-network",
+    CELO: "celo",
+    CUSD: "celo-dollar",
+    CEUR: "celo-euro",
+    ARB: "arbitrum",
+    LINK: "chainlink",
+    // Add more mappings as needed
+  };
+
+  return idMapping[normalizedSymbol] || null;
+};
+
+// Function to fetch token balances from blockchain
+const fetchUserTokenBalances = async (
+  account: string,
+  chainId: number
+): Promise<Token[]> => {
+  if (!account || !chainId) {
+    return [];
+  }
+
+  try {
+    // Use our modified implementation for token balances
+    const goatBalances = await integration.getTokenBalancesWithGoat(
+      chainId,
+      account,
+      window.ethereum
+    );
+
+    // Convert our format to the Token format
+    const tokens: Token[] = [];
+
+    // Get chain name for the display
+    const chainName = getChainName(chainId);
+
+    // Add native token first - we still need to handle this specially
+    const nativeBalance = await new ethers.providers.Web3Provider(
+      window.ethereum
+    ).getBalance(account);
+    const nativeTokenSymbol = getNativeTokenSymbol(chainId);
+    const nativeTokenDecimals = 18; // Most native tokens have 18 decimals
+    const formattedNativeBalance = ethers.utils.formatUnits(
+      nativeBalance,
+      nativeTokenDecimals
+    );
+
+    // Add native token to token list
+    tokens.push({
+      symbol: nativeTokenSymbol,
+      name: getNativeTokenName(chainId),
+      balance: formattedNativeBalance,
+      icon: getNativeTokenIcon(nativeTokenSymbol),
+      chain: chainName,
+      price: 0, // Will be updated with price data
+      change24h: 0, // Will be updated with price data
+    });
+
+    // Process tokens from our implementation
+    for (const balance of goatBalances) {
+      // Format token icon URL - special case for some tokens
+      let iconUrl;
+      const symbolLower = balance.symbol.toLowerCase();
+
+      if (symbolLower === "celo") {
+        iconUrl = "https://cryptologos.cc/logos/celo-celo-logo.png";
+      } else if (symbolLower === "cusd") {
+        iconUrl = "https://cryptologos.cc/logos/celo-dollar-cusd-logo.png";
+      } else if (symbolLower === "ceur") {
+        iconUrl = "https://cryptologos.cc/logos/celo-euro-ceur-logo.png";
+      } else {
+        iconUrl = `https://cryptologos.cc/logos/${symbolLower}-${symbolLower}-logo.png`;
+      }
+
+      // Add token to our list
+      tokens.push({
+        symbol: balance.symbol,
+        name: balance.symbol, // Using symbol as name for simplicity
+        balance: balance.amount,
+        icon: iconUrl,
+        chain: chainName,
+        price: balance.usdValue || 0,
+        change24h: 0, // Not provided by our implementation
+      });
+    }
+
+    return tokens;
+  } catch (error) {
+    console.error("Error fetching token balances:", error);
+    // Fallback to original implementation for reliability
+    return fallbackFetchUserTokenBalances(account, chainId);
+  }
+};
+
+// Original implementation kept as fallback
+const fallbackFetchUserTokenBalances = async (
+  account: string,
+  chainId: number
+): Promise<Token[]> => {
+  if (!account || !chainId) {
+    return [];
+  }
+
+  try {
+    // Get provider based on current chain
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    // Get native token balance (ETH, MATIC, BNB, etc.)
+    const nativeBalance = await provider.getBalance(account);
+    const nativeTokenSymbol = getNativeTokenSymbol(chainId);
+    const nativeTokenDecimals = 18; // Most native tokens have 18 decimals
+
+    // Format native token balance
+    const formattedNativeBalance = ethers.utils.formatUnits(
+      nativeBalance,
+      nativeTokenDecimals
+    );
+
+    // Start with native token
+    const tokens: Token[] = [];
+
+    // Get current chain name
+    const chainName = getChainName(chainId);
+
+    // Add native token to token list
+    tokens.push({
+      symbol: nativeTokenSymbol,
+      name: getNativeTokenName(chainId),
+      balance: formattedNativeBalance,
+      icon: getNativeTokenIcon(nativeTokenSymbol),
+      chain: chainName,
+      price: 0, // Will be updated with price data
+      change24h: 0, // Will be updated with price data
+    });
+
+    // Get token addresses for current chain
+    const tokenAddresses = CHAIN_TOKEN_ADDRESSES[chainId] || {};
+
+    // Fetch ERC20 token balances
+    const tokenPromises = Object.entries(tokenAddresses).map(
+      async ([symbol, address]) => {
+        try {
+          const tokenContract = new ethers.Contract(
+            address,
+            ERC20_ABI,
+            provider
+          );
+
+          // Fetch token details
+          const balance = await tokenContract.balanceOf(account);
+          const decimals = await tokenContract.decimals();
+          const name = await tokenContract.name();
+
+          // Format balance based on token decimals
+          const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+
+          // Only return tokens with non-zero balance
+          if (parseFloat(formattedBalance) > 0) {
+            // Format token icon URL - special case for some tokens
+            let iconUrl;
+            const symbolLower = symbol.toLowerCase();
+
+            if (symbolLower === "celo") {
+              iconUrl = "https://cryptologos.cc/logos/celo-celo-logo.png";
+            } else if (symbolLower === "cusd") {
+              iconUrl =
+                "https://cryptologos.cc/logos/celo-dollar-cusd-logo.png";
+            } else if (symbolLower === "ceur") {
+              iconUrl = "https://cryptologos.cc/logos/celo-euro-ceur-logo.png";
+            } else {
+              iconUrl = `https://cryptologos.cc/logos/${symbolLower}-${symbolLower}-logo.png`;
+            }
+
+            return {
+              symbol: symbol,
+              name: name,
+              balance: formattedBalance,
+              icon: iconUrl,
+              chain: chainName,
+              price: 0, // Will be updated with price data
+              change24h: 0, // Will be updated with price data
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching token ${symbol}:`, error);
+          return null;
+        }
+      }
+    );
+
+    // Wait for all token promises to resolve
+    const tokenResults = await Promise.all(tokenPromises);
+
+    // Filter out null results and add valid tokens to our list
+    tokenResults
+      .filter((token) => token !== null)
+      .forEach((token) => {
+        if (token) tokens.push(token);
+      });
+
+    return tokens;
+  } catch (error) {
+    console.error("Error fetching token balances:", error);
+    return [];
+  }
+};
+
+// Function to fetch token prices from CoinGecko
+const fetchTokenPrices = async (tokens: Token[]): Promise<Token[]> => {
+  if (tokens.length === 0) return tokens;
+
+  try {
+    // Create a list of token IDs to query
+    const tokenIds = tokens
+      .map((token) => getCoingeckoId(token.symbol))
+      .filter((id) => id);
+
+    if (tokenIds.length === 0) return tokens;
+
+    // Fetch price data from CoinGecko API
+    const response = await axios.get(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds.join(
+        ","
+      )}&vs_currencies=usd&include_24hr_change=true`
+    );
+
+    if (response.data) {
+      // Update tokens with price data
+      return tokens.map((token) => {
+        const coingeckoId = getCoingeckoId(token.symbol);
+        const priceData = coingeckoId ? response.data[coingeckoId] : null;
+
+        if (priceData) {
+          return {
+            ...token,
+            price: priceData.usd || 0,
+            change24h: priceData.usd_24h_change || 0,
+          };
+        }
+        return token;
+      });
+    }
+
+    return tokens;
+  } catch (error) {
+    console.error("Error fetching token prices:", error);
+    return tokens;
+  }
+};
 
 interface Message {
   role: "user" | "assistant";
@@ -44,108 +454,6 @@ interface Token {
   price: number;
   change24h: number;
 }
-
-// Sample token data - in production this would come from your API
-const SAMPLE_TOKENS: Record<string, Token[]> = {
-  ethereum: [
-    {
-      symbol: "ETH",
-      name: "Ethereum",
-      balance: "1.25",
-      icon: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
-      chain: "Ethereum",
-      price: 3498.21,
-      change24h: 2.4,
-    },
-    {
-      symbol: "USDC",
-      name: "USD Coin",
-      balance: "1250.00",
-      icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
-      chain: "Ethereum",
-      price: 1.0,
-      change24h: 0.01,
-    },
-    {
-      symbol: "WBTC",
-      name: "Wrapped Bitcoin",
-      balance: "0.08",
-      icon: "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.png",
-      chain: "Ethereum",
-      price: 66410.32,
-      change24h: 1.2,
-    },
-  ],
-  polygon: [
-    {
-      symbol: "MATIC",
-      name: "Polygon",
-      balance: "2500.50",
-      icon: "https://cryptologos.cc/logos/polygon-matic-logo.png",
-      chain: "Polygon",
-      price: 0.56,
-      change24h: -1.3,
-    },
-    {
-      symbol: "USDC",
-      name: "USD Coin",
-      balance: "450.00",
-      icon: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
-      chain: "Polygon",
-      price: 1.0,
-      change24h: 0.0,
-    },
-    {
-      symbol: "AAVE",
-      name: "Aave",
-      balance: "3.5",
-      icon: "https://cryptologos.cc/logos/aave-aave-logo.png",
-      chain: "Polygon",
-      price: 92.45,
-      change24h: 5.7,
-    },
-  ],
-  celo: [
-    {
-      symbol: "CELO",
-      name: "Celo",
-      balance: "150.00",
-      icon: "https://cryptologos.cc/logos/celo-celo-logo.png",
-      chain: "Celo",
-      price: 0.74,
-      change24h: 3.2,
-    },
-    {
-      symbol: "cUSD",
-      name: "Celo Dollar",
-      balance: "320.00",
-      icon: "https://cryptologos.cc/logos/celo-dollar-cusd-logo.png",
-      chain: "Celo",
-      price: 1.0,
-      change24h: 0.01,
-    },
-  ],
-  arbitrum: [
-    {
-      symbol: "ARB",
-      name: "Arbitrum",
-      balance: "75.00",
-      icon: "https://cryptologos.cc/logos/arbitrum-arb-logo.png",
-      chain: "Arbitrum",
-      price: 0.95,
-      change24h: -2.1,
-    },
-    {
-      symbol: "USDT",
-      name: "Tether",
-      balance: "180.00",
-      icon: "https://cryptologos.cc/logos/tether-usdt-logo.png",
-      chain: "Arbitrum",
-      price: 1.0,
-      change24h: 0.0,
-    },
-  ],
-};
 
 // Update the example intents with chain-specific versions that match our functions
 const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
@@ -195,182 +503,6 @@ const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
   ],
 };
 
-// Updated interfaces to include function responses
-interface IntentPattern {
-  pattern: RegExp;
-  response: string | ((matches: RegExpMatchArray) => string);
-  tokens: boolean;
-  actions: {
-    label: string;
-    action: string;
-    intent?: string;
-  }[];
-  extractVariables?: (matches: RegExpMatchArray) => Record<string, string>;
-}
-
-// Add more intent patterns to handle direct input
-const INTENT_PATTERNS: IntentPattern[] = [
-  {
-    pattern: /deposit|add|put/i,
-    response:
-      "I can help you deposit funds. Which token would you like to deposit?",
-    tokens: true,
-    actions: [
-      {
-        label: "Deposit with max yield",
-        action: "SUGGEST_INTENT",
-        intent:
-          "Deposit my [TOKEN] to earn the highest yield across all chains",
-      },
-      {
-        label: "Deposit with lowest risk",
-        action: "SUGGEST_INTENT",
-        intent:
-          "Deposit my [TOKEN] into the most secure protocol with reasonable yield",
-      },
-    ],
-  },
-  {
-    pattern: /withdraw|remove|take out/i,
-    response:
-      "I can help you withdraw your assets. Which token would you like to withdraw?",
-    tokens: true,
-    actions: [
-      {
-        label: "Withdraw to my wallet",
-        action: "SUGGEST_INTENT",
-        intent: "Withdraw my [TOKEN] to my current wallet",
-      },
-      {
-        label: "Convert to stablecoins",
-        action: "SUGGEST_INTENT",
-        intent: "Withdraw my [TOKEN] and convert to USDC",
-      },
-    ],
-  },
-  {
-    pattern: /swap|exchange|convert/i,
-    response: "I can help you swap tokens. What would you like to exchange?",
-    tokens: true,
-    actions: [
-      {
-        label: "Get best exchange rate",
-        action: "SUGGEST_INTENT",
-        intent: "Swap [TOKEN] for USDC at the best possible rate",
-      },
-      {
-        label: "Swap with lowest fees",
-        action: "SUGGEST_INTENT",
-        intent: "Swap [TOKEN] for ETH with minimal fees",
-      },
-    ],
-  },
-  {
-    pattern: /yield|interest|apy|earn/i,
-    response:
-      "Looking for the best yields? Here are some options for your assets:",
-    tokens: true,
-    actions: [
-      {
-        label: "Highest yield strategy",
-        action: "SUGGEST_INTENT",
-        intent: "Find the highest yield for my [TOKEN] across all chains",
-      },
-      {
-        label: "Yield with insurance",
-        action: "SUGGEST_INTENT",
-        intent: "Earn yield on my [TOKEN] with insurance protection",
-      },
-    ],
-  },
-  {
-    pattern: /stake|staking/i,
-    response:
-      "I can help you stake your assets for rewards. Which asset would you like to stake?",
-    tokens: true,
-    actions: [
-      {
-        label: "Best staking rewards",
-        action: "SUGGEST_INTENT",
-        intent: "Find the best staking rewards for my [TOKEN]",
-      },
-      {
-        label: "Liquid staking",
-        action: "SUGGEST_INTENT",
-        intent: "Convert my [TOKEN] to a liquid staking derivative",
-      },
-    ],
-  },
-  {
-    pattern: /bridge|transfer to|move to/i,
-    response:
-      "I can help you bridge your assets to different chains. Which token would you like to bridge?",
-    tokens: true,
-    actions: [
-      {
-        label: "Bridge with lowest fees",
-        action: "SUGGEST_INTENT",
-        intent: "Bridge my [TOKEN] to [CHAIN] with the lowest fees",
-      },
-      {
-        label: "Fastest bridge option",
-        action: "SUGGEST_INTENT",
-        intent: "Find the fastest bridge to transfer my [TOKEN] to [CHAIN]",
-      },
-    ],
-  },
-  {
-    pattern: /deposit (\d+) ([a-zA-Z]+)/i,
-    response: ((matches: RegExpMatchArray) => {
-      const amount = matches[1];
-      const token = matches[2].toUpperCase();
-      return `I'll help you deposit ${amount} ${token}. Which chain would you like to use?`;
-    }) as IntentPattern["response"],
-    tokens: true,
-    actions: [
-      {
-        label: "Deposit on Celo",
-        action: "SUGGEST_INTENT",
-        intent: "Deposit [AMOUNT] [TOKEN] on Celo",
-      },
-      {
-        label: "Deposit with best yield",
-        action: "SUGGEST_INTENT",
-        intent: "Deposit [AMOUNT] [TOKEN] with highest yield",
-      },
-    ],
-    extractVariables: (matches: RegExpMatchArray) => ({
-      amount: matches[1],
-      token: matches[2].toUpperCase(),
-    }),
-  },
-  {
-    pattern: /borrow (\d+) ([a-zA-Z]+)/i,
-    response: ((matches: RegExpMatchArray) => {
-      const amount = matches[1];
-      const token = matches[2].toUpperCase();
-      return `I'll help you borrow ${amount} ${token}. Here are some options:`;
-    }) as IntentPattern["response"],
-    tokens: false,
-    actions: [
-      {
-        label: "Borrow on Rootstock",
-        action: "SUGGEST_INTENT",
-        intent: "Borrow [AMOUNT] [TOKEN] on Rootstock",
-      },
-      {
-        label: "Borrow at lowest interest",
-        action: "SUGGEST_INTENT",
-        intent: "Borrow [AMOUNT] [TOKEN] at lowest interest rate",
-      },
-    ],
-    extractVariables: (matches: RegExpMatchArray) => ({
-      amount: matches[1],
-      token: matches[2].toUpperCase(),
-    }),
-  },
-];
-
 export default function IntentAgent({
   onCreateIntent,
 }: {
@@ -381,11 +513,11 @@ export default function IntentAgent({
     {
       role: "assistant",
       content:
-        "Hello! I'm your IntentFi Agent. I can help you execute DeFi strategies on your current chain. What would you like to do today?",
+        "Hello! I'm your IntentFi Agent powered by GOAT SDK. I can help you execute DeFi strategies on your current chain, including token swaps, balances, lending, and more. What would you like to do today?",
       timestamp: new Date(),
       actions: [
         { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
-        { label: "Show available functions", action: "SHOW_FUNCTIONS" },
+        { label: "Swap tokens", action: "SHOW_OPTIONS" },
         { label: "See example intents", action: "SHOW_EXAMPLES" },
       ],
     },
@@ -393,8 +525,10 @@ export default function IntentAgent({
   const [isTyping, setIsTyping] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const chainId = useChainId();
+  const [userTokens, setUserTokens] = useState<Token[]>([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -404,6 +538,51 @@ export default function IntentAgent({
       inline: "nearest",
     });
   }, [messages]);
+
+  // Fetch user's token balances when connected
+  useEffect(() => {
+    const loadUserTokens = async () => {
+      if (isConnected && address && chainId) {
+        setIsLoadingTokens(true);
+        try {
+          // Fetch token balances
+          const balances = await fetchUserTokenBalances(address, chainId);
+
+          // Remove potential duplicates by symbol
+          const uniqueBalances = balances.filter(
+            (token, index, self) =>
+              index === self.findIndex((t) => t.symbol === token.symbol)
+          );
+
+          // Fetch price data for tokens
+          const tokensWithPrices = await fetchTokenPrices(uniqueBalances);
+
+          setUserTokens(tokensWithPrices);
+        } catch (error) {
+          console.error("Error loading user tokens:", error);
+          // Set empty tokens on error instead of sample tokens
+          setUserTokens([]);
+          toast.error("Failed to load token balances");
+        } finally {
+          setIsLoadingTokens(false);
+        }
+      } else {
+        // Set empty tokens when not connected instead of sample tokens
+        setUserTokens([]);
+      }
+    };
+
+    loadUserTokens();
+
+    // Set up a refresh interval (every 60 seconds)
+    const refreshInterval = setInterval(() => {
+      if (isConnected && address) {
+        loadUserTokens();
+      }
+    }, 60000);
+
+    return () => clearInterval(refreshInterval);
+  }, [isConnected, address, chainId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -442,22 +621,9 @@ export default function IntentAgent({
   };
 
   const getTokensForCurrentChain = (): Token[] => {
-    // Return appropriate tokens based on the chainId
-    if (!chainId) return SAMPLE_TOKENS.ethereum || [];
-
-    switch (chainId) {
-      case 44787: // Celo Alfajores
-        return SAMPLE_TOKENS.celo || [];
-      case 31: // Rootstock
-        // Since we don't have specific Rootstock tokens in our sample data,
-        // we could show Ethereum tokens for now or create a custom set
-        return SAMPLE_TOKENS.ethereum || [];
-      case 2743859179913000: // Saga IFI
-        // For Saga, we could use arbitrum as a placeholder or create custom tokens
-        return SAMPLE_TOKENS.arbitrum || [];
-      default:
-        return SAMPLE_TOKENS.ethereum || [];
-    }
+    // Return empty array instead of sample tokens
+    // User must connect wallet to see tokens
+    return [];
   };
 
   // Enhanced message processing to handle natural language intents directly
@@ -486,63 +652,6 @@ export default function IntentAgent({
         ],
       };
     }
-
-    // Financial keywords that the bot should understand
-    const financialKeywords = [
-      "defi",
-      "crypto",
-      "token",
-      "yield",
-      "stake",
-      "borrow",
-      "lend",
-      "deposit",
-      "withdraw",
-      "invest",
-      "wallet",
-      "balance",
-      "transfer",
-      "bridge",
-      "swap",
-      "eth",
-      "btc",
-      "celo",
-      "usdc",
-      "usdt",
-      "aave",
-      "compound",
-      "pool",
-      "liquidity",
-      "collateral",
-      "apr",
-      "apy",
-      "interest",
-      "blockchain",
-      "network",
-      "chain",
-      "transaction",
-      "gas",
-      "fee",
-      "protocol",
-      "exchange",
-      "trading",
-      "farm",
-      "governance",
-      "dao",
-      "nft",
-      "asset",
-      "portfolio",
-      "profit",
-      "loss",
-      "risk",
-      "reward",
-      "price",
-      "value",
-      "market",
-      "fund",
-      "strategy",
-      "return",
-    ];
 
     // Check if message has any financial keywords
     const hasFinancialKeywords = financialKeywords.some((keyword) =>
@@ -602,6 +711,22 @@ export default function IntentAgent({
           });
         }
 
+        // Inside processMessage function
+        // Pattern matching for tokens display
+        if (pattern.tokens) {
+          // Only show tokens if connected, otherwise show a prompt to connect
+          responseText += isConnected
+            ? " Here are your tokens:"
+            : " Please connect your wallet to view your tokens.";
+          return {
+            response: responseText,
+            tokens: pattern.tokens && isConnected ? userTokens : undefined,
+            actions: [
+              { label: "See example intents", action: "SHOW_EXAMPLES" },
+            ],
+          };
+        }
+
         return {
           response: responseText,
           tokens: pattern.tokens ? getTokensForCurrentChain() : undefined,
@@ -628,6 +753,12 @@ export default function IntentAgent({
   };
 
   const getDefaultToken = (): string => {
+    // First check if user has tokens and return the first one
+    if (userTokens.length > 0) {
+      return userTokens[0].symbol;
+    }
+
+    // Fallback to chain-specific defaults
     if (!chainId) return "ETH";
 
     switch (chainId) {
@@ -684,64 +815,6 @@ export default function IntentAgent({
       setIsProcessing(false);
       return;
     }
-
-    // Check if this is a non-financial query before passing to backend
-    const financialKeywords = [
-      "defi",
-      "crypto",
-      "token",
-      "yield",
-      "stake",
-      "borrow",
-      "lend",
-      "deposit",
-      "withdraw",
-      "invest",
-      "wallet",
-      "balance",
-      "transfer",
-      "bridge",
-      "swap",
-      "eth",
-      "btc",
-      "celo",
-      "usdc",
-      "usdt",
-      "aave",
-      "compound",
-      "pool",
-      "liquidity",
-      "collateral",
-      "apr",
-      "apy",
-      "interest",
-      "blockchain",
-      "network",
-      "chain",
-      "transaction",
-      "gas",
-      "fee",
-      "protocol",
-      "exchange",
-      "trading",
-      "farm",
-      "governance",
-      "dao",
-      "nft",
-      "asset",
-      "portfolio",
-      "profit",
-      "loss",
-      "risk",
-      "reward",
-      "price",
-      "value",
-      "market",
-      "fund",
-      "strategy",
-      "return",
-    ];
-
     // Check if intent has any financial keywords
     const hasFinancialKeywords = financialKeywords.some((keyword) =>
       lowerIntent.includes(keyword)
@@ -916,7 +989,6 @@ export default function IntentAgent({
 
   // Generate dynamic pool data based on the chain
   const generateDynamicPoolDataForChain = (chain: string): PoolInfo[] => {
-    const defaultToken = getDefaultToken();
     const currentDate = new Date();
     const oneWeekLater = new Date(currentDate);
     oneWeekLater.setDate(currentDate.getDate() + 7);
@@ -924,61 +996,121 @@ export default function IntentAgent({
     const oneMonthLater = new Date(currentDate);
     oneMonthLater.setMonth(currentDate.getMonth() + 1);
 
-    // Generate different APYs based on chain
-    const getChainSpecificApy = (poolId: number): string => {
-      const baseApy = 5 + poolId * 1.5;
-
-      // Add chain-specific multipliers
-      if (chain.includes("celo")) return `${(baseApy * 1.2).toFixed(1)}%`;
-      if (chain.includes("root") || chain.includes("rbtc"))
-        return `${(baseApy * 1.1).toFixed(1)}%`;
-      if (chain.includes("saga") || chain.includes("ifi"))
-        return `${(baseApy * 1.5).toFixed(1)}%`;
-      return `${baseApy.toFixed(1)}%`;
+    // Chain-specific tokens configuration
+    const chainTokens: {
+      [key: string]: { symbol: string; name: string; baseApy: number }[];
+    } = {
+      celo: [
+        { symbol: "CELO", name: "Celo", baseApy: 8.5 },
+        { symbol: "cUSD", name: "Celo Dollar", baseApy: 6.2 },
+        { symbol: "cEUR", name: "Celo Euro", baseApy: 5.9 },
+        { symbol: "USDC", name: "USD Coin", baseApy: 4.7 },
+        { symbol: "DAI", name: "Dai Stablecoin", baseApy: 4.5 },
+        { symbol: "WBTC", name: "Wrapped Bitcoin", baseApy: 3.2 },
+      ],
+      rootstock: [
+        { symbol: "RBTC", name: "Rootstock BTC", baseApy: 7.2 },
+        { symbol: "USDT", name: "Tether", baseApy: 5.3 },
+        { symbol: "USDC", name: "USD Coin", baseApy: 5.1 },
+        { symbol: "DOC", name: "Dollar on Chain", baseApy: 6.8 },
+        { symbol: "RIF", name: "RSK Infrastructure Framework", baseApy: 9.4 },
+        { symbol: "SOV", name: "Sovryn", baseApy: 10.5 },
+      ],
+      saga: [
+        { symbol: "IFI", name: "IntentFi", baseApy: 12.0 },
+        { symbol: "USDC", name: "USD Coin", baseApy: 7.5 },
+        { symbol: "USDT", name: "Tether", baseApy: 7.2 },
+        { symbol: "DAI", name: "Dai Stablecoin", baseApy: 6.9 },
+        { symbol: "ETH", name: "Ethereum", baseApy: 5.3 },
+        { symbol: "WBTC", name: "Wrapped Bitcoin", baseApy: 4.1 },
+      ],
+      default: [
+        { symbol: "ETH", name: "Ethereum", baseApy: 5.7 },
+        { symbol: "USDC", name: "USD Coin", baseApy: 4.2 },
+        { symbol: "USDT", name: "Tether", baseApy: 4.0 },
+        { symbol: "DAI", name: "Dai Stablecoin", baseApy: 3.8 },
+        { symbol: "WBTC", name: "Wrapped Bitcoin", baseApy: 2.5 },
+        { symbol: "LINK", name: "Chainlink", baseApy: 6.3 },
+      ],
     };
 
-    // Generate different total staked amounts
-    const getTotalStaked = (poolId: number): string => {
-      if (poolId === 4) return (Math.random() * 200 + 20).toFixed(6); // Popular pool
-      if (poolId === 0) return (Math.random() * 50 + 10).toFixed(6); // First pool
-      return (Math.random() * 10).toFixed(6); // Other pools
+    // Determine which token set to use based on chain
+    let tokenSet = chainTokens.default;
+    if (chain.includes("celo")) tokenSet = chainTokens.celo;
+    if (chain.includes("root") || chain.includes("rbtc"))
+      tokenSet = chainTokens.rootstock;
+    if (chain.includes("saga") || chain.includes("ifi"))
+      tokenSet = chainTokens.saga;
+
+    // Generate chain-specific APY with randomization
+    const getChainSpecificApy = (baseApy: number, poolId: number): string => {
+      // Add slight randomization to APY
+      const variation = Math.random() * 1.5 - 0.75; // -0.75% to +0.75%
+      let finalApy = baseApy + variation;
+
+      // Boost APY for higher pool IDs (newer pools often have boosted rewards)
+      finalApy += poolId * 0.4;
+
+      // Apply chain-specific multipliers
+      if (chain.includes("celo")) finalApy *= 1.2;
+      if (chain.includes("root") || chain.includes("rbtc")) finalApy *= 1.1;
+      if (chain.includes("saga") || chain.includes("ifi")) finalApy *= 1.5;
+
+      return `${finalApy.toFixed(1)}%`;
     };
 
-    // Generate different staking tokens based on chain and pool
-    const getStakingToken = (poolId: number): string => {
-      const tokens: { [key: string]: string[] } = {
-        celo: ["CELO", "cUSD", "cEUR", "USDC", "DAI", "WBTC"],
-        root: ["RBTC", "USDT", "USDC", "DOC", "RIF", "SOV"],
-        saga: ["IFI", "USDC", "USDT", "DAI", "ETH", "WBTC"],
-        default: ["ETH", "USDC", "USDT", "DAI", "WBTC", "LINK"],
+    // Generate realistic total staked amounts
+    const getTotalStaked = (symbol: string, poolId: number): string => {
+      const baseAmount =
+        tokenSet.findIndex((t) => t.symbol === symbol) === 0 ? 100 : 20;
+      let multiplier = 1;
+
+      // Popular tokens have more staked
+      if (["ETH", "USDC", "WBTC", "CELO", "RBTC", "IFI"].includes(symbol)) {
+        multiplier = 2.5;
+      }
+
+      // Featured pools (like pool 4) have more staked
+      if (poolId === 4) multiplier *= 3;
+      if (poolId === 0) multiplier *= 1.5;
+
+      const randomFactor = 0.5 + Math.random() * 1.5; // 0.5x to 2x randomization
+      const stakedAmount = baseAmount * multiplier * randomFactor;
+
+      // Format based on token type (more precision for expensive tokens)
+      if (["ETH", "WBTC", "RBTC"].includes(symbol)) {
+        return stakedAmount.toFixed(6);
+      }
+      return stakedAmount.toFixed(2);
+    };
+
+    // Generate pool data using the chain-specific tokens
+    return Array.from({ length: 6 }, (_, i) => {
+      // Select token for this pool - each pool uses a different token to stake
+      const stakingToken = tokenSet[i % tokenSet.length];
+
+      // For reward tokens, use a different token (typically the platform token)
+      const rewardTokenIndex = i === 4 ? 0 : (i + 3) % tokenSet.length;
+      const rewardToken = tokenSet[rewardTokenIndex];
+
+      return {
+        poolId: i,
+        stakingToken: stakingToken.symbol,
+        rewardToken: rewardToken.symbol,
+        rewardPerSecond: (0.000000000000000005 * (i + 1)).toFixed(18),
+        totalStaked: getTotalStaked(stakingToken.symbol, i),
+        startTime:
+          i === 0
+            ? new Date(currentDate.getTime() + 86400000).toLocaleString()
+            : currentDate.toLocaleString(),
+        endTime:
+          i === 0
+            ? oneMonthLater.toLocaleString()
+            : oneWeekLater.toLocaleString(),
+        isActive: Math.random() > 0.2, // 20% chance of inactive pool
+        apy: getChainSpecificApy(stakingToken.baseApy, i),
       };
-
-      let tokenList = tokens.default;
-      if (chain.includes("celo")) tokenList = tokens.celo;
-      if (chain.includes("root")) tokenList = tokens.root;
-      if (chain.includes("saga")) tokenList = tokens.saga;
-
-      return poolId < tokenList.length ? tokenList[poolId] : defaultToken;
-    };
-
-    // Generate pool data
-    return Array.from({ length: 6 }, (_, i) => ({
-      poolId: i,
-      stakingToken: getStakingToken(i),
-      rewardToken: i === 4 ? defaultToken : getStakingToken((i + 3) % 6),
-      rewardPerSecond: (0.000000000000000005 * (i + 1)).toFixed(18),
-      totalStaked: getTotalStaked(i),
-      startTime:
-        i === 0
-          ? new Date(currentDate.getTime() + 86400000).toLocaleString()
-          : currentDate.toLocaleString(),
-      endTime:
-        i === 0
-          ? oneMonthLater.toLocaleString()
-          : oneWeekLater.toLocaleString(),
-      isActive: Math.random() > 0.2, // 20% chance of inactive pool
-      apy: getChainSpecificApy(i),
-    }));
+    });
   };
 
   // Format pool information in a readable way with visual enhancements
@@ -1096,6 +1228,15 @@ export default function IntentAgent({
     const poolInfoMatch = lowerIntent.match(
       /\bpool\s+info|information|details\b/i
     );
+    const swapMatch = lowerIntent.match(
+      /\bswap\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+(?:for|to|into)\s+([a-zA-Z]+))?/i
+    );
+    const exchangeMatch = lowerIntent.match(
+      /\bexchange\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+(?:for|to|into)\s+([a-zA-Z]+))?/i
+    );
+    const quoteMatch = lowerIntent.match(
+      /\b(?:get|show)\s+(?:a\s+)?quote\s+(?:for\s+)?(?:swap(?:ping)?|exchang(?:ing|e))?\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+(?:for|to|into)\s+([a-zA-Z]+))?/i
+    );
 
     // Process direct function call if matched
     if (
@@ -1106,7 +1247,10 @@ export default function IntentAgent({
       balanceMatch ||
       stakeMatch ||
       unstakeMatch ||
-      poolInfoMatch
+      poolInfoMatch ||
+      swapMatch ||
+      exchangeMatch ||
+      quoteMatch
     ) {
       directFunctionCall = true;
 
@@ -1160,7 +1304,8 @@ export default function IntentAgent({
         } else {
           // If no specific token is provided, show available tokens for the current chain
           directFunctionCall = false; // Don't process intent yet
-          const availableTokens = getTokensForCurrentChain();
+          const availableTokens =
+            isConnected && userTokens.length > 0 ? userTokens : [];
 
           setMessages((prev) => [
             ...prev,
@@ -1195,6 +1340,221 @@ export default function IntentAgent({
         confirmationMessage = `I'll process your request to unstake ${amount} ${token.toUpperCase()} from pool ${poolId} on ${chainName}.`;
       } else if (poolInfoMatch) {
         confirmationMessage = `I'll retrieve detailed pool information for ${chainName}.`;
+      } else if (swapMatch) {
+        const amount = swapMatch[1];
+        const fromToken = swapMatch[2].toUpperCase();
+        let toToken = swapMatch[3]?.toUpperCase();
+
+        // Default to a stablecoin if no target token specified
+        if (!toToken) {
+          toToken = fromToken === "USDC" ? getDefaultToken() : "USDC";
+        }
+
+        const chainName = getCurrentChainName();
+        confirmationMessage = `I'll process your request to swap ${amount} ${fromToken} for ${toToken} on ${chainName}.`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Process the swap
+        handleSwapTokens(fromToken, toToken, amount).then((result) => {
+          if (result.success) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: result.message,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "DIRECT_INTENT",
+                    intent: `Check my ${toToken} balance`,
+                  },
+                  {
+                    label: "Make another swap",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `Error: ${result.message}`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try again",
+                    action: "DIRECT_INTENT",
+                    intent: `Swap ${amount} ${fromToken} to ${toToken}`,
+                  },
+                  {
+                    label: "Try different amounts",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+        });
+      } else if (exchangeMatch) {
+        const amount = exchangeMatch[1];
+        const fromToken = exchangeMatch[2].toUpperCase();
+        let toToken = exchangeMatch[3]?.toUpperCase();
+
+        // Default to a stablecoin if no target token specified
+        if (!toToken) {
+          toToken = fromToken === "USDC" ? getDefaultToken() : "USDC";
+        }
+
+        const chainName = getCurrentChainName();
+        confirmationMessage = `I'll process your request to exchange ${amount} ${fromToken} for ${toToken} on ${chainName}.`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Process the swap
+        handleSwapTokens(fromToken, toToken, amount).then((result) => {
+          if (result.success) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: result.message,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "DIRECT_INTENT",
+                    intent: `Check my ${toToken} balance`,
+                  },
+                  {
+                    label: "Make another exchange",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `Error: ${result.message}`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try again",
+                    action: "DIRECT_INTENT",
+                    intent: `Exchange ${amount} ${fromToken} to ${toToken}`,
+                  },
+                  {
+                    label: "Try different amounts",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+        });
+      } else if (quoteMatch) {
+        const amount = quoteMatch[1];
+        const fromToken = quoteMatch[2].toUpperCase();
+        let toToken = quoteMatch[3]?.toUpperCase();
+
+        // Default to a stablecoin if no target token specified
+        if (!toToken) {
+          toToken = fromToken === "USDC" ? getDefaultToken() : "USDC";
+        }
+
+        const chainName = getCurrentChainName();
+        confirmationMessage = `Getting a quote for swapping ${amount} ${fromToken} to ${toToken} on ${chainName}...`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Create an async function for handling the quote
+        (async () => {
+          try {
+            if (!address) {
+              throw new Error(
+                "Wallet not connected. Please connect your wallet to get a quote."
+              );
+            }
+
+            const quote = await integration.getSwapQuote({
+              chainId,
+              provider: window.ethereum,
+              address,
+              inputToken: fromToken,
+              outputToken: toToken,
+              amount,
+            });
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `📊 **Swap Quote**\n\nSwapping ${amount} ${fromToken} will get you approximately ${
+                  quote.expectedOutput
+                } ${toToken}.\n\nPrice Impact: ${
+                  quote.estimatedPriceImpact
+                }%\nRoute: ${quote.routeDescription || "Direct"}`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: `Execute this swap`,
+                    action: "DIRECT_INTENT",
+                    intent: `Swap ${amount} ${fromToken} to ${toToken}`,
+                  },
+                  {
+                    label: "Try different amount",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } catch (error) {
+            console.error("Error getting swap quote:", error);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `Error: Unable to get a quote for this swap. ${
+                  error instanceof Error ? error.message : "Please try again."
+                }`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try different tokens",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+        })(); // Immediately invoke the async function
       }
 
       // For all other intents, show confirmation and process immediately
@@ -1220,7 +1580,8 @@ export default function IntentAgent({
       // Handle generic balance requests that didn't match the specific pattern
       directFunctionCall = true; // Mark as handled
       const chainName = getCurrentChainName();
-      const availableTokens = getTokensForCurrentChain();
+      const availableTokens =
+        isConnected && userTokens.length > 0 ? userTokens : [];
 
       setMessages((prev) => [
         ...prev,
@@ -1340,8 +1701,9 @@ export default function IntentAgent({
           // If intent contains [TOKEN] placeholder, replace it with a default or first available token
           let processedIntent = intent;
           if (intent.includes("[TOKEN]")) {
-            const tokens = getTokensForCurrentChain();
-            const defaultToken = tokens.length > 0 ? tokens[0].symbol : "USDC";
+            // Use userTokens instead of getTokensForCurrentChain
+            const defaultToken =
+              userTokens.length > 0 ? userTokens[0].symbol : "USDC";
             processedIntent = intent.replace(/\[TOKEN\]/g, defaultToken);
           }
 
@@ -1370,41 +1732,49 @@ export default function IntentAgent({
         break;
 
       case "SHOW_PORTFOLIO":
-        // Show all tokens across all chains
-        const allTokens: Token[] = [
-          ...SAMPLE_TOKENS.ethereum,
-          ...SAMPLE_TOKENS.polygon,
-          ...SAMPLE_TOKENS.celo,
-          ...SAMPLE_TOKENS.arbitrum,
-        ];
+        // Use actual tokens or show empty state
+        const portfolioTokens = userTokens;
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: "Here's your current portfolio across all chains:",
-            timestamp: new Date(),
-            tokens: allTokens.map((token) => ({
-              symbol: token.symbol,
-              balance: token.balance,
-              icon: token.icon,
-              price: token.price,
-            })),
-            actions: [
-              {
-                label: "Optimize my portfolio",
-                action: "SUGGEST_INTENT",
-                intent:
-                  "Optimize my portfolio for maximum yield with moderate risk",
-              },
-              {
-                label: "Rebalance assets",
-                action: "SUGGEST_INTENT",
-                intent: "Rebalance my portfolio to 50% stablecoins and 50% ETH",
-              },
-            ],
-          },
-        ]);
+        // Add message with token information or a prompt to connect wallet
+        if (portfolioTokens.length > 0) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Here's your current portfolio${
+                chainId ? ` on ${getChainName(chainId)}` : ""
+              }:${isLoadingTokens ? " (refreshing...)" : ""}`,
+              tokens: portfolioTokens.map((token) => ({
+                symbol: token.symbol,
+                balance: token.balance,
+                icon: token.icon,
+                price: token.price,
+              })),
+              timestamp: new Date(),
+              actions: [
+                { label: "Swap tokens", action: "SHOW_OPTIONS" },
+                { label: "See example intents", action: "SHOW_EXAMPLES" },
+              ],
+            },
+          ]);
+        } else {
+          // Show a message prompting to connect wallet
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: isConnected
+                ? `You don't have any tokens in your wallet on the current chain.${
+                    isLoadingTokens ? " Still loading..." : ""
+                  }`
+                : "Please connect your wallet to view your token portfolio.",
+              timestamp: new Date(),
+              actions: [
+                { label: "See example intents", action: "SHOW_EXAMPLES" },
+              ],
+            },
+          ]);
+        }
         break;
 
       case "SHOW_EXAMPLES":
@@ -1429,9 +1799,19 @@ export default function IntentAgent({
           {
             role: "assistant",
             content:
-              "Here are some popular actions you can take with IntentFi:",
+              "Here are some popular actions you can take with IntentFi powered by GOAT SDK:",
             timestamp: new Date(),
             actions: [
+              {
+                label: "Swap tokens",
+                action: "SUGGEST_INTENT",
+                intent: `Swap 0.01 ${getDefaultToken()} for USDC`,
+              },
+              {
+                label: "Get swap quote",
+                action: "SUGGEST_INTENT",
+                intent: "Get quote for swapping 10 USDC to ETH",
+              },
               {
                 label: "Find highest yield",
                 action: "SUGGEST_INTENT",
@@ -1441,11 +1821,6 @@ export default function IntentAgent({
                 label: "Bridge tokens",
                 action: "SUGGEST_INTENT",
                 intent: "Bridge my tokens to Polygon",
-              },
-              {
-                label: "Swap tokens",
-                action: "SUGGEST_INTENT",
-                intent: "Swap ETH for USDC",
               },
               {
                 label: "Lend assets",
@@ -1504,6 +1879,11 @@ export default function IntentAgent({
                 label: "View pool info",
                 action: "EXPLAIN_FUNCTION",
                 intent: "getpoolinformation",
+              },
+              {
+                label: "Swap tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "swap",
               },
             ],
           },
@@ -1575,6 +1955,15 @@ export default function IntentAgent({
                 `Show me available pools`,
               ];
               break;
+            case "swap":
+              explanation =
+                "Swap one token for another using GOAT SDK for optimal routing and pricing.";
+              examples = [
+                `Swap 0.1 ${getDefaultToken()} for USDC`,
+                `Exchange 10 USDC for DAI`,
+                `Get quote for swapping 5 ${getDefaultToken()} to USDT`,
+              ];
+              break;
           }
 
           setMessages((prev) => [
@@ -1607,6 +1996,22 @@ export default function IntentAgent({
           },
         ]);
         processIntent(`Stake 10 ${defaultToken} in highest APY pool`);
+        break;
+
+      case "CONNECT_WALLET":
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "To view your actual token balances and portfolio, please connect your wallet using the 'Connect Wallet' button in the navigation bar.",
+            timestamp: new Date(),
+            actions: [
+              { label: "Show my portfolio", action: "SHOW_PORTFOLIO" },
+              { label: "See example intents", action: "SHOW_EXAMPLES" },
+            ],
+          },
+        ]);
         break;
 
       default:
@@ -1664,6 +2069,66 @@ export default function IntentAgent({
         // Process the intent directly
         processIntent(updatedIntent);
       }
+    }
+  };
+
+  // Add a new function to handle token swaps using GOAT
+  const handleSwapTokens = async (
+    fromToken: string,
+    toToken: string,
+    amount: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (!isConnected || !address || !chainId) {
+        return {
+          success: false,
+          message:
+            "Wallet not connected. Please connect your wallet to proceed.",
+        };
+      }
+
+      // First get a quote to show the user what they'll receive
+      const quote = await integration.getSwapQuote({
+        chainId,
+        provider: window.ethereum,
+        address,
+        inputToken: fromToken,
+        outputToken: toToken,
+        amount,
+      });
+
+      toast.info(
+        `Swapping ${amount} ${fromToken} for approximately ${quote.expectedOutput} ${toToken} (Price impact: ${quote.estimatedPriceImpact}%).`
+      );
+
+      // Execute the swap
+      const txHash = await integration.executeSwap({
+        chainId,
+        provider: window.ethereum,
+        address,
+        inputToken: fromToken,
+        outputToken: toToken,
+        amount,
+        slippage: 0.5,
+      });
+
+      toast.success(`Swap transaction submitted! TX Hash: ${txHash}`);
+      return {
+        success: true,
+        message: `Successfully swapped ${amount} ${fromToken} for ${toToken}.`,
+      };
+    } catch (error) {
+      console.error("Error swapping tokens:", error);
+      let errorMessage = "Failed to swap tokens. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   };
 
@@ -1745,7 +2210,7 @@ export default function IntentAgent({
 
                     {/* Display tokens if available */}
                     {message.tokens && message.tokens.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="mt-4 grid grid-cols-1 gap-3">
                         {message.tokens.map((token, tidx) => (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -1762,6 +2227,11 @@ export default function IntentAgent({
                                   src={token.icon}
                                   alt={token.symbol}
                                   className="w-10 h-10 rounded-full relative z-10"
+                                  onError={(e) => {
+                                    // Fallback to a default image if the icon fails to load
+                                    e.currentTarget.src =
+                                      "https://cryptologos.cc/logos/question-mark.png";
+                                  }}
                                 />
                               </div>
                             )}
@@ -1773,24 +2243,23 @@ export default function IntentAgent({
                                 Balance: {token.balance}
                               </p>
                             </div>
-                            {token.price && (
-                              <div className="text-right">
-                                <p className="text-white font-medium">
-                                  $
-                                  {token.price.toLocaleString(undefined, {
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  $
-                                  {(
-                                    parseFloat(token.balance) * token.price
-                                  ).toLocaleString(undefined, {
-                                    maximumFractionDigits: 2,
-                                  })}
-                                </p>
-                              </div>
-                            )}
+                            <div className="text-right">
+                              <p className="text-white text-xs leading-snug">
+                                <span className="font-semibold">Price:</span> $
+                                {token.price?.toLocaleString(undefined, {
+                                  maximumFractionDigits: 2,
+                                }) || "0.00"}
+                              </p>
+                              <p className="text-xs text-gray-400 leading-snug">
+                                <span className="font-semibold">Value:</span> $
+                                {(
+                                  (parseFloat(token.balance) || 0) *
+                                  (token.price || 0)
+                                ).toLocaleString(undefined, {
+                                  maximumFractionDigits: 2,
+                                })}
+                              </p>
+                            </div>
                           </motion.div>
                         ))}
                       </div>
