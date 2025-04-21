@@ -10,6 +10,8 @@ import {
   fetchUserTokenBalances,
   fetchTokenPrices,
   getChainName,
+  TokenBalance,
+  Web3Provider,
 } from "./utils/token-utils";
 import { CHAIN_SPECIFIC_INTENTS } from "./utils/intent-examples";
 import {
@@ -22,6 +24,14 @@ import { Token } from "./utils/token-utils";
 import { AgentHeader } from "./ui/AgentHeader";
 import { MessageItem } from "./ui/MessageItem";
 import { InputArea } from "./ui/InputArea";
+import {
+  getPricePrediction,
+  getTokenInsights,
+  getTokenInfo,
+  bridgeTokens,
+  resolveEnsName,
+  addBalancerLiquidity,
+} from "@/lib/services/goat-sdk-service";
 
 export interface IntentAgentProps {
   onCreateIntent: (intent: string) => void;
@@ -70,7 +80,11 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
             address,
             chainId,
             window.ethereum,
-            integration.getTokenBalancesWithGoat
+            integration.getTokenBalancesWithGoat as unknown as (
+              chainId: number,
+              account: string,
+              provider: Web3Provider
+            ) => Promise<TokenBalance[]>
           );
 
           // Remove potential duplicates by symbol
@@ -172,6 +186,177 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
     }
   };
 
+  const getPredictionForToken = async (tokenSymbol: string) => {
+    if (!isConnected || !address || !chainId || !window.ethereum) {
+      toast.error("Please connect your wallet to use this feature");
+      return null;
+    }
+
+    try {
+      setIsProcessing(true);
+      const prediction = await getPricePrediction({
+        chainId,
+        provider: window.ethereum,
+        token: tokenSymbol,
+      });
+
+      setIsProcessing(false);
+      return prediction;
+    } catch (error) {
+      console.error("Error getting price prediction:", error);
+      setIsProcessing(false);
+      toast.error(`Failed to get price prediction for ${tokenSymbol}`);
+      return null;
+    }
+  };
+
+  const getInsightsForToken = async (tokenSymbol: string) => {
+    if (!isConnected || !address || !chainId || !window.ethereum) {
+      toast.error("Please connect your wallet to use this feature");
+      return null;
+    }
+
+    try {
+      setIsProcessing(true);
+      const insights = await getTokenInsights({
+        chainId,
+        provider: window.ethereum,
+        token: tokenSymbol,
+      });
+
+      setIsProcessing(false);
+      return insights;
+    } catch (error) {
+      console.error("Error getting token insights:", error);
+      setIsProcessing(false);
+      toast.error(`Failed to get insights for ${tokenSymbol}`);
+      return null;
+    }
+  };
+
+  const getScreenerInfoForToken = async (tokenSymbol: string) => {
+    if (!isConnected || !address || !chainId || !window.ethereum) {
+      toast.error("Please connect your wallet to use this feature");
+      return null;
+    }
+
+    try {
+      setIsProcessing(true);
+      const tokenInfo = await getTokenInfo({
+        chainId,
+        provider: window.ethereum,
+        token: tokenSymbol,
+      });
+
+      setIsProcessing(false);
+      return tokenInfo;
+    } catch (error) {
+      console.error("Error getting token information:", error);
+      setIsProcessing(false);
+      toast.error(`Failed to get information for ${tokenSymbol}`);
+      return null;
+    }
+  };
+
+  const bridgeTokenToChain = async (
+    tokenSymbol: string,
+    amount: string,
+    destinationChainId: number
+  ) => {
+    if (!isConnected || !address || !chainId || !window.ethereum) {
+      toast.error("Please connect your wallet to use this feature");
+      return false;
+    }
+
+    try {
+      setIsProcessing(true);
+      const result = await bridgeTokens({
+        chainId,
+        provider: window.ethereum,
+        address,
+        token: tokenSymbol,
+        amount,
+        destinationChainId,
+      });
+
+      setIsProcessing(false);
+      if (result.success) {
+        toast.success(`Successfully bridged ${amount} ${tokenSymbol}`);
+        return true;
+      } else {
+        toast.error("Bridge transaction failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error bridging tokens:", error);
+      setIsProcessing(false);
+      toast.error(
+        `Failed to bridge ${tokenSymbol}: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return false;
+    }
+  };
+
+  const resolveEns = async (ensName: string) => {
+    if (!window.ethereum) {
+      toast.error("Please use a web3-enabled browser");
+      return null;
+    }
+
+    try {
+      const resolvedAddress = await resolveEnsName({
+        chainId: 1, // ENS is on Ethereum mainnet
+        provider: window.ethereum,
+        ensName,
+      });
+
+      return resolvedAddress;
+    } catch (error) {
+      console.error("Error resolving ENS name:", error);
+      toast.error(`Failed to resolve ENS name: ${ensName}`);
+      return null;
+    }
+  };
+
+  const addLiquidityToBalancer = async (
+    poolId: string,
+    tokens: string[],
+    amounts: string[]
+  ) => {
+    if (!isConnected || !address || !chainId || !window.ethereum) {
+      toast.error("Please connect your wallet to use this feature");
+      return false;
+    }
+
+    try {
+      setIsProcessing(true);
+      const result = await addBalancerLiquidity({
+        chainId,
+        provider: window.ethereum,
+        address,
+        poolId,
+        tokens,
+        amounts,
+      });
+
+      setIsProcessing(false);
+      if (result.success) {
+        toast.success(`Successfully added liquidity to Balancer pool`);
+        return true;
+      } else {
+        toast.error("Transaction failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error adding liquidity:", error);
+      setIsProcessing(false);
+      toast.error(
+        `Failed to add liquidity: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return false;
+    }
+  };
+
   const processIntent = (formattedIntent: string) => {
     // Set processing state
     setIsProcessing(true);
@@ -199,6 +384,538 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
         },
       ]);
       setIsProcessing(false);
+      return;
+    }
+
+    // Check for price prediction intent
+    const pricePredictionMatch = lowerIntent.match(
+      /\bprice\s+prediction\s+(?:for\s+)?([a-zA-Z]+)/i
+    );
+    if (pricePredictionMatch) {
+      const token = pricePredictionMatch[1].toUpperCase();
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Getting price prediction for ${token}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      getPredictionForToken(token)
+        .then((prediction) => {
+          if (prediction) {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `📈 **Price Prediction for ${token}**\n\nPredicted price: $${parseFloat(prediction.prediction).toFixed(4)}\nConfidence level: ${(prediction.confidence * 100).toFixed(2)}%`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: `Get ${token} insights`,
+                    action: "DIRECT_INTENT",
+                    intent: `Get insights for ${token}`,
+                  },
+                  {
+                    label: "Try different token",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Sorry, I couldn't get a price prediction for ${token}.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try different token",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error getting price prediction: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Try different token",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
+      return;
+    }
+
+    // Check for token insights intent
+    const insightsMatch = lowerIntent.match(
+      /\binsights?\s+(?:for\s+)?([a-zA-Z]+)/i
+    );
+    if (insightsMatch) {
+      const token = insightsMatch[1].toUpperCase();
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Getting insights for ${token}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      getInsightsForToken(token)
+        .then((insights) => {
+          if (insights && Object.keys(insights).length > 0) {
+            // Format insights into a readable message
+            const formattedInsights = Object.entries(insights)
+              .map(([key, value]) => `**${key}**: ${value}`)
+              .join("\n");
+
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `📊 **Token Insights for ${token}**\n\n${formattedInsights}`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: `Price prediction for ${token}`,
+                    action: "DIRECT_INTENT",
+                    intent: `Get price prediction for ${token}`,
+                  },
+                  {
+                    label: "Show market info",
+                    action: "DIRECT_INTENT",
+                    intent: `Get market info for ${token}`,
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Sorry, I couldn't get insights for ${token}.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try different token",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error getting token insights: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Try different token",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
+      return;
+    }
+
+    // Check for token market info intent
+    const marketInfoMatch = lowerIntent.match(
+      /\bmarket\s+info\s+(?:for\s+)?([a-zA-Z]+)/i
+    );
+    if (marketInfoMatch) {
+      const token = marketInfoMatch[1].toUpperCase();
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Getting market information for ${token}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      getScreenerInfoForToken(token)
+        .then((info) => {
+          if (info && Object.keys(info).length > 0) {
+            // Format market info into a readable message
+            const formattedInfo = Object.entries(info)
+              .map(([key, value]) => `**${key}**: ${value}`)
+              .join("\n");
+
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `📈 **Market Information for ${token}**\n\n${formattedInfo}`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: `Price prediction for ${token}`,
+                    action: "DIRECT_INTENT",
+                    intent: `Get price prediction for ${token}`,
+                  },
+                  {
+                    label: `Swap ${token}`,
+                    action: "DIRECT_INTENT",
+                    intent: `Swap 0.1 ${token} to USDC`,
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Sorry, I couldn't get market information for ${token}.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try different token",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error getting market information: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Try different token",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
+      return;
+    }
+
+    // Check for bridge intent
+    const bridgeMatch = lowerIntent.match(
+      /\bbridge\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+to\s+([a-zA-Z]+))?/i
+    );
+    if (bridgeMatch) {
+      const amount = bridgeMatch[1];
+      const token = bridgeMatch[2].toUpperCase();
+      const targetChain = bridgeMatch[3]?.toLowerCase();
+
+      // Map chain names to chain IDs
+      const chainMap: Record<string, number> = {
+        ethereum: 1,
+        eth: 1,
+        polygon: 137,
+        matic: 137,
+        arbitrum: 42161,
+        arb: 42161,
+        celo: 42220,
+        optimism: 10,
+        op: 10,
+        bnb: 56,
+        bsc: 56,
+        avalanche: 43114,
+        avax: 43114,
+      };
+
+      let destinationChainId = 1; // Default to Ethereum
+      if (targetChain && chainMap[targetChain]) {
+        destinationChainId = chainMap[targetChain];
+      }
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Preparing to bridge ${amount} ${token} to chain ID ${destinationChainId}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      bridgeTokenToChain(token, amount, destinationChainId)
+        .then((success) => {
+          if (success) {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `✅ Successfully initiated bridge of ${amount} ${token} to chain ID ${destinationChainId}. Transaction is being processed.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "SHOW_PORTFOLIO",
+                  },
+                  {
+                    label: "Bridge more tokens",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Failed to bridge ${amount} ${token}. Please check your balance and try again.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "SHOW_PORTFOLIO",
+                  },
+                  {
+                    label: "Try again",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error bridging tokens: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Check balances",
+                  action: "SHOW_PORTFOLIO",
+                },
+                {
+                  label: "Try again",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
+      return;
+    }
+
+    // Check for ENS resolution intent
+    const ensMatch = lowerIntent.match(
+      /\bresolve\s+(?:ens\s+)?([a-zA-Z0-9.-]+\.eth)/i
+    );
+    if (ensMatch) {
+      const ensName = ensMatch[1].toLowerCase();
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Resolving ENS name: ${ensName}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      resolveEns(ensName)
+        .then((address) => {
+          if (address) {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `✅ The ENS name ${ensName} resolves to:\n\n\`${address}\``,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Resolve another ENS",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Could not resolve the ENS name ${ensName}. It may not be registered or properly configured.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Try another name",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error resolving ENS name: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Try again",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
+      return;
+    }
+
+    // Check for add liquidity intent
+    const addLiquidityMatch = lowerIntent.match(
+      /\badd\s+liquidity\s+(?:to\s+)?(?:balancer\s+)?(?:pool\s+)?([a-zA-Z0-9-]+)(?:\s+with\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+)(?:\s+and\s+(\d+(?:\.\d+)?)\s+([a-zA-Z]+))?)?/i
+    );
+    if (addLiquidityMatch) {
+      const poolId = addLiquidityMatch[1];
+
+      // If amounts and tokens are provided
+      const tokens: string[] = [];
+      const amounts: string[] = [];
+
+      if (addLiquidityMatch[2] && addLiquidityMatch[3]) {
+        amounts.push(addLiquidityMatch[2]);
+        tokens.push(addLiquidityMatch[3].toUpperCase());
+
+        if (addLiquidityMatch[4] && addLiquidityMatch[5]) {
+          amounts.push(addLiquidityMatch[4]);
+          tokens.push(addLiquidityMatch[5].toUpperCase());
+        }
+      } else {
+        // Default tokens if none provided
+        const defaultToken = getDefaultToken();
+        tokens.push(defaultToken, "USDC");
+        amounts.push("0.1", "10");
+      }
+
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        {
+          role: "assistant",
+          content: `Preparing to add liquidity to pool ${poolId} with ${tokens.map((t, i) => `${amounts[i]} ${t}`).join(" and ")}...`,
+          timestamp: new Date(),
+          isLoading: true,
+        },
+      ]);
+
+      addLiquidityToBalancer(poolId, tokens, amounts)
+        .then((success) => {
+          if (success) {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `✅ Successfully added liquidity to pool ${poolId} with ${tokens.map((t, i) => `${amounts[i]} ${t}`).join(" and ")}.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "SHOW_PORTFOLIO",
+                  },
+                  {
+                    label: "More DeFi actions",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev.filter((msg) => !msg.isLoading),
+              {
+                role: "assistant",
+                content: `Failed to add liquidity. Please check your balance and try again.`,
+                timestamp: new Date(),
+                actions: [
+                  {
+                    label: "Check balances",
+                    action: "SHOW_PORTFOLIO",
+                  },
+                  {
+                    label: "Try again",
+                    action: "SHOW_OPTIONS",
+                  },
+                ],
+              },
+            ]);
+          }
+          setIsProcessing(false);
+        })
+        .catch((error) => {
+          setMessages((prev) => [
+            ...prev.filter((msg) => !msg.isLoading),
+            {
+              role: "assistant",
+              content: `Error adding liquidity: ${error instanceof Error ? error.message : String(error)}`,
+              timestamp: new Date(),
+              actions: [
+                {
+                  label: "Check balances",
+                  action: "SHOW_PORTFOLIO",
+                },
+                {
+                  label: "Try again",
+                  action: "SHOW_OPTIONS",
+                },
+              ],
+            },
+          ]);
+          setIsProcessing(false);
+        });
+
       return;
     }
 
@@ -574,6 +1291,31 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
                 action: "EXPLAIN_FUNCTION",
                 intent: "swap",
               },
+              {
+                label: "Bridge tokens",
+                action: "EXPLAIN_FUNCTION",
+                intent: "bridge",
+              },
+              {
+                label: "Get price predictions",
+                action: "EXPLAIN_FUNCTION",
+                intent: "price_prediction",
+              },
+              {
+                label: "Token insights",
+                action: "EXPLAIN_FUNCTION",
+                intent: "token_insights",
+              },
+              {
+                label: "Resolve ENS names",
+                action: "EXPLAIN_FUNCTION",
+                intent: "resolve_ens",
+              },
+              {
+                label: "Add liquidity",
+                action: "EXPLAIN_FUNCTION",
+                intent: "add_liquidity",
+              },
             ],
           },
         ]);
@@ -651,6 +1393,44 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
                 `Swap 0.1 ${getDefaultToken()} for USDC`,
                 `Exchange 10 USDC for DAI`,
                 `Get quote for swapping 5 ${getDefaultToken()} to USDT`,
+              ];
+              break;
+            case "bridge":
+              explanation =
+                "Bridge tokens between different blockchain networks.";
+              examples = [
+                `Bridge 10 USDC to Polygon`,
+                `Bridge 0.1 ETH to Arbitrum`,
+              ];
+              break;
+            case "price_prediction":
+              explanation =
+                "Get price predictions for tokens using the Allora API.";
+              examples = [
+                `Get price prediction for ETH`,
+                `What's the price prediction for BTC?`,
+              ];
+              break;
+            case "token_insights":
+              explanation = "Get detailed insights and analysis for tokens.";
+              examples = [
+                `Get insights for ETH`,
+                `Show me token insights for USDC`,
+              ];
+              break;
+            case "resolve_ens":
+              explanation =
+                "Resolve Ethereum Name Service (ENS) names to addresses.";
+              examples = [
+                `Resolve vitalik.eth`,
+                `What address does example.eth point to?`,
+              ];
+              break;
+            case "add_liquidity":
+              explanation = "Add liquidity to Balancer pools to earn fees.";
+              examples = [
+                `Add liquidity to pool 0x1234 with 0.1 ETH and 10 USDC`,
+                `Add liquidity to Balancer pool`,
               ];
               break;
           }

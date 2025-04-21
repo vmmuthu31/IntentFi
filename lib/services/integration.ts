@@ -21,14 +21,19 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celoAlfajores, rootstockTestnet } from "viem/chains";
+
+// Import all GOAT SDK services
 import {
-  getTokenBalances,
-  getSwapQuote as goatGetSwapQuote,
-  executeSwap as goatExecuteSwap,
-  GoatSwapQuote,
+  getTokenBalancesWithGoat,
+  getSwapQuote,
+  executeSwap,
+  getPricePrediction,
+  getTokenInsights,
+  getTokenInfo,
+  bridgeTokens,
+  resolveEnsName,
+  addBalancerLiquidity,
 } from "./goat-sdk-service";
-import { Web3Provider } from "@/components/intent/utils/token-utils";
-import { Provider } from "./goat-sdk-service";
 
 type TransactionRequest = {
   account: Account;
@@ -1797,7 +1802,7 @@ const getPoolInformation = async ({ chainId }: { chainId: number }) => {
     bigint, // totalStaked
     bigint, // startTime
     bigint, // endTime
-    boolean // isActive
+    boolean, // isActive
   ];
 
   for (let i = 0; i < Number(poolLength); i++) {
@@ -1884,7 +1889,7 @@ const stake = async ({
       bigint, // totalStaked
       bigint, // startTime
       bigint, // endTime
-      boolean // isActive
+      boolean, // isActive
     ];
 
     const poolInfo = (await publicClient.readContract({
@@ -2211,7 +2216,7 @@ const unstake = async ({
       bigint, // totalStaked
       bigint, // startTime
       bigint, // endTime
-      boolean // isActive
+      boolean, // isActive
     ];
 
     const poolInfo = (await publicClient.readContract({
@@ -2619,50 +2624,37 @@ const emergencyWithdraw = async ({
   }
 };
 
-// Add swap quote parameters
-interface SwapQuoteParams {
-  chainId: number;
-  provider: Provider;
-  address: string;
-  inputToken: string;
-  outputToken: string;
-  amount: string;
-}
-
 /**
  * Integration service object with methods for DeFi operations
  */
 export const integration = {
   formatUnits,
   parseUnits,
-  approve: approveWithWagmi,
-  deposit,
+  approveWithWagmi,
+  setTokenPrice,
   getTokenBalance,
   checkAllowance,
+  fundFaucet,
+  deposit,
   withdraw,
   borrow,
   repay,
   listToken,
-  setTokenPrice,
   createPool,
   getPoolInformation,
   stake,
-  getUserPoolInfo,
   unstake,
+  getUserPoolInfo,
   claimRewards,
   emergencyWithdraw,
-  getTokenBalancesWithGoat: async (
-    chainId: number,
-    address: string,
-    provider: Web3Provider
-  ) => {
-    return getTokenBalances(chainId, address, provider as unknown as Provider);
-  },
-  getSwapQuote: async (params: SwapQuoteParams): Promise<GoatSwapQuote> => {
-    const { inputToken, outputToken, amount } = params;
-    return goatGetSwapQuote(inputToken, outputToken, amount);
-  },
-  executeSwap: async (): Promise<string> => {
-    return goatExecuteSwap();
-  },
+  // Add GOAT SDK functions
+  getTokenBalancesWithGoat,
+  getSwapQuote,
+  executeSwap,
+  getPricePrediction,
+  getTokenInsights,
+  getTokenInfo,
+  bridgeTokens,
+  resolveEnsName,
+  addBalancerLiquidity,
 };

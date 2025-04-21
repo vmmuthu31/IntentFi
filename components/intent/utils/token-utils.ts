@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import axios from "axios";
+import { Provider as GoatProvider } from "@/lib/services/goat-sdk-service";
 
 // Types
 export interface Token {
@@ -248,7 +249,36 @@ export const fetchTokenPrices = async (tokens: Token[]): Promise<Token[]> => {
   }
 };
 
-// Function to fetch token balances from blockchain
+// Add Provider adapter similar to the one in swap-utils
+/**
+ * Adapter function to convert Web3Provider to GoatProvider
+ */
+const adaptToGoatProvider = (web3Provider: Web3Provider): GoatProvider => {
+  if (!web3Provider || typeof web3Provider.request !== "function") {
+    return {
+      request: () => {
+        console.error("Provider not properly initialized");
+        return Promise.reject(new Error("Provider not properly initialized"));
+      },
+      ...web3Provider,
+    };
+  }
+
+  return {
+    request: (args) => {
+      const requestMethod = web3Provider.request;
+      if (!requestMethod) {
+        return Promise.reject(
+          new Error("Provider request method is undefined")
+        );
+      }
+      return requestMethod(args);
+    },
+    ...web3Provider,
+  };
+};
+
+// Update the fetchUserTokenBalances function
 export const fetchUserTokenBalances = async (
   account: string,
   chainId: number,
@@ -256,7 +286,7 @@ export const fetchUserTokenBalances = async (
   getTokenBalancesWithGoat: (
     chainId: number,
     account: string,
-    provider: Web3Provider
+    provider: GoatProvider
   ) => Promise<TokenBalance[]>
 ): Promise<Token[]> => {
   if (!account || !chainId) {
@@ -264,11 +294,14 @@ export const fetchUserTokenBalances = async (
   }
 
   try {
+    // Adapt the provider for GOAT SDK
+    const adaptedProvider = adaptToGoatProvider(provider);
+
     // Use our modified implementation for token balances
     const goatBalances = await getTokenBalancesWithGoat(
       chainId,
       account,
-      provider
+      adaptedProvider
     );
 
     // Convert our format to the Token format

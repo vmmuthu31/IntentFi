@@ -1,10 +1,44 @@
 import { toast } from "sonner";
 import { Web3Provider } from "./token-utils";
 
-// Add Provider type like in goat-sdk-service.ts
-type Provider = {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-  [key: string]: unknown;
+// Import type from integration
+import { integration } from "@/lib/services/integration";
+import { Provider } from "@/lib/services/goat-sdk-service";
+type IntegrationType = typeof integration;
+
+/**
+ * Adapter function to convert Web3Provider to Provider
+ * This ensures type compatibility between the two provider types
+ */
+const adaptProvider = (web3Provider: Web3Provider): Provider => {
+  if (!web3Provider || typeof web3Provider.request !== "function") {
+    // Create a compatible provider with the required request method
+    return {
+      request: () => {
+        console.error("Provider not properly initialized");
+        return Promise.reject(new Error("Provider not properly initialized"));
+      },
+      // Copy any other properties from the original provider
+      ...web3Provider,
+    };
+  }
+
+  // Return a compatible provider object
+  return {
+    // Ensure the request method has the correct type signature
+    request: (args) => {
+      // Make TypeScript happy with the possibly undefined request method
+      const requestMethod = web3Provider.request;
+      if (!requestMethod) {
+        return Promise.reject(
+          new Error("Provider request method is undefined")
+        );
+      }
+      return requestMethod(args);
+    },
+    // Include all other properties from the original provider
+    ...web3Provider,
+  };
 };
 
 // Integration interface for swap functionality
@@ -40,65 +74,70 @@ export interface SwapResult {
   message: string;
 }
 
+/**
+ * Handle swap tokens using GOAT SDK
+ */
 export const handleSwapTokens = async (
-  integration: SwapIntegration,
+  integration: IntegrationType,
   fromToken: string,
   toToken: string,
   amount: string,
   chainId: number,
   provider: Web3Provider,
-  address: string | undefined,
+  address: string,
   isConnected: boolean
-): Promise<SwapResult> => {
-  try {
-    if (!isConnected || !address || !chainId) {
-      return {
-        success: false,
-        message: "Wallet not connected. Please connect your wallet to proceed.",
-      };
-    }
+): Promise<{ success: boolean; message: string }> => {
+  if (!isConnected) {
+    return {
+      success: false,
+      message: "Please connect your wallet to swap tokens",
+    };
+  }
 
-    // First get a quote to show the user what they'll receive
+  try {
+    // Adapt the provider to the expected type
+    const adaptedProvider = adaptProvider(provider);
+
+    // Get a quote first
     const quote = await integration.getSwapQuote({
       chainId,
-      provider: provider as unknown as Provider,
+      provider: adaptedProvider,
       address,
       inputToken: fromToken,
       outputToken: toToken,
       amount,
     });
 
-    toast.info(
-      `Swapping ${amount} ${fromToken} for approximately ${quote.expectedOutput} ${toToken} (Price impact: ${quote.estimatedPriceImpact}%).`
+    // Show toast with quote info
+    toast.success(
+      `Quote: ${amount} ${fromToken} ≈ ${quote.expectedOutput} ${toToken}`
     );
 
     // Execute the swap
-    const txHash = await integration.executeSwap({
+    const result = await integration.executeSwap({
       chainId,
-      provider: provider as unknown as Provider,
+      provider: adaptedProvider,
       address,
       inputToken: fromToken,
       outputToken: toToken,
       amount,
-      slippage: 0.5,
     });
 
-    toast.success(`Swap transaction submitted! TX Hash: ${txHash}`);
-    return {
-      success: true,
-      message: `Successfully swapped ${amount} ${fromToken} for ${toToken}.`,
-    };
-  } catch (error) {
-    console.error("Error swapping tokens:", error);
-    let errorMessage = "Failed to swap tokens. Please try again.";
-    if (error instanceof Error) {
-      errorMessage = error.message;
+    if (result.success) {
+      return {
+        success: true,
+        message: `Successfully swapped ${amount} ${fromToken} for approximately ${quote.expectedOutput} ${toToken}`,
+      };
+    } else {
+      throw new Error("Swap transaction failed");
     }
-
-    toast.error(errorMessage);
+  } catch (error) {
+    console.error("Swap error:", error);
     return {
       success: false,
-      message: errorMessage,
+      message: `Failed to swap tokens: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     };
   }
 };

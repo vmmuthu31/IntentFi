@@ -9,6 +9,11 @@ export const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
     "Stake 10 CELO in pool 4",
     "Unstake 5 CELO from pool 4",
     "Get pool information on Celo",
+    "Get price prediction for CELO",
+    "Get insights for CELO",
+    "Get market info for CELO",
+    "Bridge 5 CELO to Ethereum",
+    "Add liquidity to Balancer pool 0x1234 with 5 CELO and 10 USDC",
   ],
   // Rootstock examples
   "31": [
@@ -20,6 +25,11 @@ export const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
     "Stake 1 RBTC in pool 4",
     "Unstake 0.5 RBTC from pool 4",
     "Get pool information on Rootstock",
+    "Get price prediction for RBTC",
+    "Get insights for RBTC",
+    "Get market info for RBTC",
+    "Bridge 0.1 RBTC to Ethereum",
+    "Add liquidity to Balancer pool 0x5678 with 0.1 RBTC and 5 USDT",
   ],
   // Saga IFI examples
   "2743859179913000": [
@@ -31,6 +41,11 @@ export const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
     "Stake 5 IFI in pool 4",
     "Unstake 2 IFI from pool 4",
     "Get pool information on Saga",
+    "Get price prediction for IFI",
+    "Get insights for IFI",
+    "Get market info for IFI",
+    "Bridge 5 IFI to Ethereum",
+    "Add liquidity to Balancer pool 0xABCD with 5 IFI and 10 USDC",
   ],
   // Default examples for any other chain
   default: [
@@ -42,5 +57,11 @@ export const CHAIN_SPECIFIC_INTENTS: Record<string, string[]> = {
     "Stake 10 tokens in pool 4",
     "Unstake 5 tokens from pool 4",
     "Get pool information",
+    "Get price prediction for ETH",
+    "Get insights for USDC",
+    "Get market info for BTC",
+    "Bridge 0.1 ETH to Polygon",
+    "Resolve vitalik.eth",
+    "Add liquidity to Balancer pool",
   ],
 };
