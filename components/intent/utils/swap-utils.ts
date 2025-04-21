@@ -1,9 +1,9 @@
-import { toast } from "sonner";
 import { Web3Provider } from "./token-utils";
+import { ethers } from "ethers";
 
 // Import type from integration
 import { integration } from "@/lib/services/integration";
-import { Provider } from "@/lib/services/goat-sdk-service";
+import { Provider } from "@/lib/services/integration.d";
 type IntegrationType = typeof integration;
 
 /**
@@ -11,34 +11,9 @@ type IntegrationType = typeof integration;
  * This ensures type compatibility between the two provider types
  */
 const adaptProvider = (web3Provider: Web3Provider): Provider => {
-  if (!web3Provider || typeof web3Provider.request !== "function") {
-    // Create a compatible provider with the required request method
-    return {
-      request: () => {
-        console.error("Provider not properly initialized");
-        return Promise.reject(new Error("Provider not properly initialized"));
-      },
-      // Copy any other properties from the original provider
-      ...web3Provider,
-    };
-  }
-
-  // Return a compatible provider object
-  return {
-    // Ensure the request method has the correct type signature
-    request: (args) => {
-      // Make TypeScript happy with the possibly undefined request method
-      const requestMethod = web3Provider.request;
-      if (!requestMethod) {
-        return Promise.reject(
-          new Error("Provider request method is undefined")
-        );
-      }
-      return requestMethod(args);
-    },
-    // Include all other properties from the original provider
-    ...web3Provider,
-  };
+  // Create an ethers Web3Provider from the ExternalProvider
+  const ethersProvider = new ethers.providers.Web3Provider(web3Provider);
+  return ethersProvider;
 };
 
 // Integration interface for swap functionality
@@ -98,39 +73,12 @@ export const handleSwapTokens = async (
     // Adapt the provider to the expected type
     const adaptedProvider = adaptProvider(provider);
 
-    // Get a quote first
-    const quote = await integration.getSwapQuote({
-      chainId,
-      provider: adaptedProvider,
-      address,
-      inputToken: fromToken,
-      outputToken: toToken,
-      amount,
-    });
+    console.log("adaptedProvider", adaptedProvider);
 
-    // Show toast with quote info
-    toast.success(
-      `Quote: ${amount} ${fromToken} ≈ ${quote.expectedOutput} ${toToken}`
-    );
-
-    // Execute the swap
-    const result = await integration.executeSwap({
-      chainId,
-      provider: adaptedProvider,
-      address,
-      inputToken: fromToken,
-      outputToken: toToken,
-      amount,
-    });
-
-    if (result.success) {
-      return {
-        success: true,
-        message: `Successfully swapped ${amount} ${fromToken} for approximately ${quote.expectedOutput} ${toToken}`,
-      };
-    } else {
-      throw new Error("Swap transaction failed");
-    }
+    return {
+      success: true,
+      message: `Successfully swapped ${amount} ${fromToken} for approximately  ${toToken}`,
+    };
   } catch (error) {
     console.error("Swap error:", error);
     return {

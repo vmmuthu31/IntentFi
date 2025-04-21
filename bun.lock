@@ -5,6 +5,7 @@
       "dependencies": {
         "@goat-sdk/adapter-model-context-protocol": "^0.2.11",
         "@goat-sdk/adapter-vercel-ai": "^0.2.10",
+        "@goat-sdk/plugin-1inch": "^0.1.9",
         "@goat-sdk/plugin-allora": "^0.1.7",
         "@goat-sdk/plugin-balancer": "^0.1.15",
         "@goat-sdk/plugin-bmx": "^0.1.2",
@@ -206,6 +207,8 @@
     "@goat-sdk/adapter-vercel-ai": ["@goat-sdk/adapter-vercel-ai@0.2.10", "", { "dependencies": { "@goat-sdk/core": "0.4.9", "ai": "4.0.3" }, "peerDependencies": { "zod": "^3.0.0" } }, "sha512-1noBvOSppbxkWfQ07xqk8DkBTZb0LgQBpLRlkFKb2H/dX2whg4SJoPP58n/YpjZuVMak21MvF7vl7NQqJmYseg=="],
 
     "@goat-sdk/core": ["@goat-sdk/core@0.4.9", "", { "dependencies": { "reflect-metadata": "0.2.2" }, "peerDependencies": { "zod": "^3.0.0" } }, "sha512-Z152kNW/iTd89t2Z59+rTGlr/XGZ0eSDzXFu8jEZfwKrr2p6AZ5JWNAe0RrVc1LcZLsXU1oGxjGytxKGyXMB7Q=="],
+
+    "@goat-sdk/plugin-1inch": ["@goat-sdk/plugin-1inch@0.1.9", "", { "dependencies": { "@goat-sdk/core": "0.4.9", "@goat-sdk/wallet-evm": "0.2.11", "zod": "3.23.8" } }, "sha512-LS6xUsvpbGCiClDG2WgjJY8zKzN95pZaUPGxdtvfArNDM3MSVMpoLppiPLFsta4LRgODm83GP0ljJQyPcwr9FQ=="],
 
     "@goat-sdk/plugin-allora": ["@goat-sdk/plugin-allora@0.1.7", "", { "dependencies": { "@goat-sdk/core": "0.4.9", "axios": "1.8.1", "zod": "3.23.8" } }, "sha512-c2D33erN8fdN+x4+vDE7O4vgEfmEfyZsYDV6c6bJH/my+CctDBfrEdHNPBBflbn8s8i1tKB8khlkuxHWwHftdw=="],
 
@@ -1866,6 +1869,8 @@
     "@goat-sdk/adapter-vercel-ai/ai": ["ai@4.0.3", "", { "dependencies": { "@ai-sdk/provider": "1.0.1", "@ai-sdk/provider-utils": "2.0.2", "@ai-sdk/react": "1.0.2", "@ai-sdk/ui-utils": "1.0.2", "@opentelemetry/api": "1.9.0", "jsondiffpatch": "0.6.0", "zod-to-json-schema": "^3.23.5" }, "peerDependencies": { "react": "^18 || ^19 || ^19.0.0-rc", "zod": "^3.0.0" }, "optionalPeers": ["react", "zod"] }, "sha512-nx5cNMldOQ72hwxL60NLtRnsmQd5Bo887Wznvxt8F5xnmjdeXRpz4ixp+0xGA88X7wiCn6c+xrhGEb9fesi/Tw=="],
 
     "@goat-sdk/core/reflect-metadata": ["reflect-metadata@0.2.2", "", {}, "sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q=="],
+
+    "@goat-sdk/plugin-1inch/zod": ["zod@3.23.8", "", {}, "sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g=="],
 
     "@goat-sdk/plugin-allora/axios": ["axios@1.8.1", "", { "dependencies": { "follow-redirects": "^1.15.6", "form-data": "^4.0.0", "proxy-from-env": "^1.1.0" } }, "sha512-NN+fvwH/kV01dYUQ3PTOZns4LWtWhOFCAhQ/pHb88WQ1hNe5V/dvFwc4VJcDL11LT9xSX0QtsR8sWUuyOuOq7g=="],
 

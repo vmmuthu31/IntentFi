@@ -4,9 +4,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { chainId } = body;
-
     try {
-      const result = await integration.approve({ chainId });
+      const result = await integration.approveWithWagmi({ chainId });
 
       return NextResponse.json({
         success: true,

@@ -11,6 +11,7 @@
   "dependencies": {
     "@goat-sdk/adapter-model-context-protocol": "^0.2.11",
     "@goat-sdk/adapter-vercel-ai": "^0.2.10",
+    "@goat-sdk/plugin-1inch": "^0.1.9",
     "@goat-sdk/plugin-allora": "^0.1.7",
     "@goat-sdk/plugin-balancer": "^0.1.15",
     "@goat-sdk/plugin-bmx": "^0.1.2",

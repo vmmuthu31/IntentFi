@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import axios from "axios";
-import { Provider as GoatProvider } from "@/lib/services/goat-sdk-service";
+import { Provider as GoatProvider } from "@/lib/services/integration.d";
 
 // Types
 export interface Token {
@@ -254,28 +254,9 @@ export const fetchTokenPrices = async (tokens: Token[]): Promise<Token[]> => {
  * Adapter function to convert Web3Provider to GoatProvider
  */
 const adaptToGoatProvider = (web3Provider: Web3Provider): GoatProvider => {
-  if (!web3Provider || typeof web3Provider.request !== "function") {
-    return {
-      request: () => {
-        console.error("Provider not properly initialized");
-        return Promise.reject(new Error("Provider not properly initialized"));
-      },
-      ...web3Provider,
-    };
-  }
-
-  return {
-    request: (args) => {
-      const requestMethod = web3Provider.request;
-      if (!requestMethod) {
-        return Promise.reject(
-          new Error("Provider request method is undefined")
-        );
-      }
-      return requestMethod(args);
-    },
-    ...web3Provider,
-  };
+  // Create an ethers Web3Provider from the ExternalProvider
+  const ethersProvider = new ethers.providers.Web3Provider(web3Provider);
+  return ethersProvider;
 };
 
 // Update the fetchUserTokenBalances function

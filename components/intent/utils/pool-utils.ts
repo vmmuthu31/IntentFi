@@ -12,26 +12,15 @@ export interface PoolInfo {
 }
 
 // Fetch pool information from API
-export const fetchPoolInformation = async (
-  chain: string
-): Promise<PoolInfo[]> => {
-  try {
-    // In production, this would be a real API call
-    // const response = await fetch(`/api/pools?chain=${chain}`);
-    // if (!response.ok) throw new Error('Failed to fetch pool data');
-    // const data = await response.json();
-    // return data.pools;
-
-    // For now, simulate an API call with a delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(generateDynamicPoolDataForChain(chain));
-      }, 1500);
-    });
-  } catch (error) {
-    console.error("Error fetching pool information:", error);
-    throw error;
-  }
+export const fetchPoolInformation = async (chainId: number) => {
+  const response = await fetch("/api/blockchain/getpools", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chainId }),
+  });
+  const { success, data } = await response.json();
+  if (!success) throw new Error("Failed to fetch pool data");
+  return data;
 };
 
 // Generate dynamic pool data based on the chain

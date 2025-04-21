@@ -24,9 +24,6 @@ import { celoAlfajores, rootstockTestnet } from "viem/chains";
 
 // Import all GOAT SDK services
 import {
-  getTokenBalancesWithGoat,
-  getSwapQuote,
-  executeSwap,
   getPricePrediction,
   getTokenInsights,
   getTokenInfo,
@@ -2648,9 +2645,6 @@ export const integration = {
   claimRewards,
   emergencyWithdraw,
   // Add GOAT SDK functions
-  getTokenBalancesWithGoat,
-  getSwapQuote,
-  executeSwap,
   getPricePrediction,
   getTokenInsights,
   getTokenInfo,
