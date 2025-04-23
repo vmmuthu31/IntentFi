@@ -8,7 +8,7 @@ import { sendETH } from "@goat-sdk/wallet-evm";
 import { PluginBase, WalletClientBase } from "@goat-sdk/core";
 
 // Define the web3 provider type
-type Web3Provider = ethers.providers.ExternalProvider;
+export type Web3Provider = ethers.providers.ExternalProvider;
 
 /**
  * Create a wallet adapter for GOAT SDK that works with browser wallets

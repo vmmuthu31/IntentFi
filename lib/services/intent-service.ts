@@ -7,6 +7,8 @@
 
 import { apiConfig } from "@/app/api/config";
 import { integration } from "./integration";
+import { ethers } from "ethers";
+import { Web3Provider } from "./goat-sdk-service";
 
 export interface IntentStep {
   description: string;
@@ -272,12 +274,14 @@ Return ONLY the JSON with no other text.`,
         }
       } else if (functionName == "balanceof") {
         const numericChainId = parseInt(chainId, 10);
-
         try {
-          const balanceResult = await integration.getTokenBalance({
-            chainId: numericChainId,
+          const provider = ethers.getDefaultProvider(numericChainId);
+          const tokenContract = new ethers.Contract(
             token,
-          });
+            ["function balanceOf(address) view returns (uint256)"],
+            provider
+          );
+          const balanceResult = await tokenContract.balanceOf(step.userAddress);
 
           const formattedBalance = BigInt(balanceResult).toString();
 
@@ -451,7 +455,7 @@ Return ONLY the JSON with no other text.`,
         const numericChainId = parseInt(chainId, 10);
 
         try {
-          const unstakeResult = await integration.unstake({
+          const unstakeResult = await integration.stake({
             chainId: numericChainId,
             poolId,
             amount,
@@ -493,8 +497,10 @@ Return ONLY the JSON with no other text.`,
         const numericChainId = parseInt(chainId, 10);
 
         try {
+          const provider = ethers.getDefaultProvider(numericChainId);
           const pools = await integration.getPoolInformation({
             chainId: numericChainId,
+            provider: provider as Web3Provider,
           });
 
           result = {
