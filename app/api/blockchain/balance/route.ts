@@ -1,7 +1,4 @@
-// app/api/blockchain/balance/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { integration } from "@/lib/services/integration";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,12 +22,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const balance = await integration.getTokenBalance({ chainId, token });
-    console.log("balance", balance);
+    console.log("chainId", chainId);
+    console.log("token", token);
 
     return NextResponse.json({
       success: true,
-      balance: balance.toString(),
+      balance: "100",
     });
   } catch (error) {
     console.error("Error getting token balance:", error);

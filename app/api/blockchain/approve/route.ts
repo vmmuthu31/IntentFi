@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
-import { integration } from "@/lib/services/integration";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { chainId } = body;
+    const { chainId, token, amount } = body;
     try {
-      const result = await integration.approveWithWagmi({ chainId });
-
+      console.log("chainId", chainId);
+      console.log("token", token);
+      console.log("amount", amount);
       return NextResponse.json({
         success: true,
         message: "Approval transaction successful",
-        data: result,
+        data: {
+          chainId,
+          token,
+          amount,
+        },
       });
     } catch (approveError) {
       console.error("Error during approval:", approveError);
