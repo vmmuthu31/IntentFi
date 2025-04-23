@@ -4,7 +4,7 @@ import { integration } from "@/lib/services/integration";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { chainId } = body;
+    const { chainId, token, amount } = body;
 
     if (!chainId) {
       return NextResponse.json(
@@ -16,8 +16,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await integration.checkAllowance({
+    const result = await integration.deposit({
       chainId,
+      token,
+      amount,
     });
 
     return NextResponse.json({

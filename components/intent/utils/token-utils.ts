@@ -128,13 +128,13 @@ export const getNativeTokenName = (chainId: number): string => {
 export const getNativeTokenIcon = (symbol: string): string => {
   switch (symbol) {
     case "ETH":
-      return "https://cryptologos.cc/logos/ethereum-eth-logo.png";
-    case "MATIC":
+      return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJDn0ojTITvcdAzMsfBMJaZC4STaDHzduleQ&s";
+    case "POL":
       return "https://cryptologos.cc/logos/polygon-matic-logo.png";
     case "BNB":
       return "https://cryptologos.cc/logos/bnb-bnb-logo.png";
     case "CELO":
-      return "https://cryptologos.cc/logos/celo-celo-logo.png";
+      return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyejSxfv1VRb4-lAhpR2xyG-_-A1XH0n9riw&s";
     case "RBTC":
       return "https://cryptologos.cc/logos/rootstock-rbtc-logo.png";
     case "IFI":
