@@ -273,17 +273,12 @@ Return ONLY the JSON with no other text.`,
           };
         }
       } else if (functionName == "balanceof") {
-        const numericChainId = parseInt(chainId, 10);
         try {
-          const provider = ethers.getDefaultProvider(numericChainId);
-          const tokenContract = new ethers.Contract(
+          const formattedBalance = await integration.getTokenBalance({
+            chainId: chainId,
             token,
-            ["function balanceOf(address) view returns (uint256)"],
-            provider
-          );
-          const balanceResult = await tokenContract.balanceOf(step.userAddress);
-
-          const formattedBalance = BigInt(balanceResult).toString();
+            userAddress: step.userAddress,
+          });
 
           result = {
             steps: [
@@ -295,7 +290,7 @@ Return ONLY the JSON with no other text.`,
             details: {
               token,
               balance: formattedBalance,
-              chainId: numericChainId,
+              chainId: chainId,
             },
           };
         } catch (error) {

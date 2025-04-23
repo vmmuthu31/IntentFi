@@ -429,93 +429,23 @@ const approveWithWagmi = async ({ chainId }: { chainId: number }) => {
   }
 };
 
-const getTokenBalance = async ({
-  chainId,
-  token,
-}: {
-  chainId: number;
-  token: string;
-}) => {
-  try {
-  const { publicClient } = await initalizeClients({ chainId });
-  if (!process.env.PRIVATE_KEY) {
-    throw new Error("Private key not found");
-  }
-  const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-  const networkConfig = Object.values(NETWORK_CONFIGS).find(
-    (config) => config.chainId === chainId
-  );
-  if (!networkConfig) {
-    throw new Error("Network config not found");
-  }
-  const tokenAddress =
-    networkConfig.contractAddresses.Token[
-      token as keyof typeof networkConfig.contractAddresses.Token
-    ];
-
-    if (!tokenAddress) {
-      console.warn(
-        `Token ${token} not found in network config for chain ${chainId}`
-      );
-      return "0";
-    }
-
-    // Verify if the contract exists at the address
-    console.log(
-      `Checking balance for token: ${token} at address: ${tokenAddress}`
-    );
-    const contractCode = await publicClient
-      .getBytecode({
-        address: tokenAddress as `0x${string}`,
-      })
-      .catch((error) => {
-        console.warn(`Error checking contract code for ${token}:`, error);
-        return null;
-      });
-
-    if (!contractCode || contractCode === "0x") {
-      console.warn(
-        `No contract found at address ${tokenAddress} for token ${token}`
-      );
-      return "0";
-    }
-
-    const balance = await publicClient
-      .readContract({
-    address: tokenAddress as `0x${string}`,
-    abi: mintABI,
-    functionName: "balanceOf",
-    args: [account.address],
-      })
-      .catch((error) => {
-        console.warn(`Error checking balance for ${token}:`, error);
-        return BigInt(0);
-  });
-
-  return BigInt(balance as bigint).toString();
-  } catch (error) {
-    console.error(`Error getting balance for ${token}:`, error);
-    return "0"; // Return 0 balance on error instead of failing
-  }
-};
-
 const checkAllowance = async ({ chainId }: { chainId: number }) => {
   try {
-  const { publicClient } = await initalizeClients({ chainId });
-  if (!process.env.PRIVATE_KEY) {
-    throw new Error("Private key not found");
-  }
-  const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-  const networkConfig = Object.values(NETWORK_CONFIGS).find(
-    (config) => config.chainId === chainId
-  );
-  if (!networkConfig) {
-    throw new Error("Network config not found");
-  }
-  const tokens = networkConfig.contractAddresses.Token;
-  const allowances: { token: string; allowance: string }[] = [];
+    const { publicClient } = await initalizeClients({ chainId });
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error("Private key not found");
+    }
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    const networkConfig = Object.values(NETWORK_CONFIGS).find(
+      (config) => config.chainId === chainId
+    );
+    if (!networkConfig) {
+      throw new Error("Network config not found");
+    }
+    const tokens = networkConfig.contractAddresses.Token;
+    const allowances: { token: string; allowance: string }[] = [];
 
-  for (const [tokenSymbol, tokenAddress] of Object.entries(tokens)) {
+    for (const [tokenSymbol, tokenAddress] of Object.entries(tokens)) {
       try {
         console.log(
           `Checking allowance for token: ${tokenSymbol} at address: ${tokenAddress}`
@@ -539,23 +469,23 @@ const checkAllowance = async ({ chainId }: { chainId: number }) => {
 
         const tokenAllowance = await publicClient
           .readContract({
-      address: tokenAddress as `0x${string}`,
-      abi: mintABI,
-      functionName: "allowance",
-      args: [
-        account.address,
-        networkConfig.contractAddresses.LendingPool as `0x${string}`,
-      ],
+            address: tokenAddress as `0x${string}`,
+            abi: mintABI,
+            functionName: "allowance",
+            args: [
+              account.address,
+              networkConfig.contractAddresses.LendingPool as `0x${string}`,
+            ],
           })
           .catch((error) => {
             console.warn(`Error checking allowance for ${tokenSymbol}:`, error);
             return BigInt(0); // Return 0 on error
-    });
+          });
 
-    allowances.push({
-      token: tokenSymbol,
-      allowance: BigInt(tokenAllowance as bigint).toString(),
-    });
+        allowances.push({
+          token: tokenSymbol,
+          allowance: BigInt(tokenAllowance as bigint).toString(),
+        });
       } catch (error) {
         console.warn(`Failed to check allowance for ${tokenSymbol}:`, error);
         allowances.push({
@@ -563,8 +493,8 @@ const checkAllowance = async ({ chainId }: { chainId: number }) => {
           allowance: "0",
         });
       }
-  }
-  return allowances;
+    }
+    return allowances;
   } catch (error) {
     console.error("Error in checkAllowance:", error);
     // Return empty allowances array instead of throwing error
@@ -700,9 +630,9 @@ const deposit = async ({
       console.log("Using browser wallet account:", address);
     } else {
       // Server environment - use private key
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("Private key not found");
-    }
+      if (!process.env.PRIVATE_KEY) {
+        throw new Error("Private key not found");
+      }
       account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
       console.log("Using private key account");
     }
@@ -828,7 +758,11 @@ const deposit = async ({
     }
 
     // Check token balance
-    const tokenBalance = await getTokenBalance({ chainId, token });
+    const tokenBalance = await getTokenBalance({
+      chainId,
+      token,
+      userAddress: account.address,
+    });
 
     // Convert amount to Wei for balance comparison
     if (BigInt(tokenBalance) < BigInt(amountInWei)) {
@@ -839,7 +773,11 @@ const deposit = async ({
       console.log("Faucet results:", JSON.stringify(faucetResults));
 
       // Verify balance was updated
-      const updatedBalance = await getTokenBalance({ chainId, token });
+      const updatedBalance = await getTokenBalance({
+        chainId,
+        token,
+        userAddress: account.address,
+      });
 
       if (BigInt(updatedBalance) < BigInt(amountInWei)) {
         return {
@@ -1017,9 +955,9 @@ const withdraw = async ({
       console.log("Using browser wallet account:", address);
     } else {
       // Server environment - use private key
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("Private key not found");
-    }
+      if (!process.env.PRIVATE_KEY) {
+        throw new Error("Private key not found");
+      }
       account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
       console.log("Using private key account");
     }
@@ -1099,7 +1037,11 @@ const withdraw = async ({
 
     // Check token balance
     console.log(`Checking ${token} balance...`);
-    const tokenBalance = await getTokenBalance({ chainId, token });
+    const tokenBalance = await getTokenBalance({
+      chainId,
+      token,
+      userAddress: account.address,
+    });
     console.log(`${token} balance:`, tokenBalance);
 
     // Convert amount to Wei for balance comparison
@@ -1113,7 +1055,11 @@ const withdraw = async ({
       console.log("Faucet results:", JSON.stringify(faucetResults));
 
       // Verify balance was updated
-      const updatedBalance = await getTokenBalance({ chainId, token });
+      const updatedBalance = await getTokenBalance({
+        chainId,
+        token,
+        userAddress: account.address,
+      });
 
       if (BigInt(updatedBalance) < BigInt(amountInWei)) {
         return {
@@ -2459,7 +2405,7 @@ const stake = async ({
     });
 
     const hash = await walletClient.sendTransaction(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       stakeParams as any
     );
     console.log(`Staking transaction sent, hash: ${hash}`);
@@ -2467,15 +2413,15 @@ const stake = async ({
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
     if (receipt.status === "reverted") {
-    return {
+      return {
         success: false,
         error: "Transaction failed",
-      transactionHash: hash,
+        transactionHash: hash,
         receipt,
       };
     }
 
-      return {
+    return {
       success: true,
       transactionHash: hash,
       receipt,
@@ -2540,24 +2486,24 @@ export const initializeClient = async () => {
 
         return {
           success: true,
-      transactionHash: receipt.transactionHash,
+          transactionHash: receipt.transactionHash,
           receipt: receipt,
-    };
-  } catch (error) {
+        };
+      } catch (error) {
         console.error(`Transaction error in ${functionName}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
           details: error instanceof Error ? error.cause : undefined,
+        };
+      }
     };
-  }
-};
 
     return {
       provider,
       signer,
       address,
-  chainId,
+      chainId,
       getContract,
       sendTransaction,
       isConnected: true,
@@ -2581,6 +2527,45 @@ export const initializeClient = async () => {
   }
 };
 
+export const getTokenBalance = async ({
+  chainId,
+  token,
+  userAddress,
+}: {
+  chainId: number;
+  token: string;
+  userAddress: string;
+}) => {
+  const numericChainId = chainId;
+  try {
+    let provider;
+    if (numericChainId === 31) {
+      provider = new ethers.providers.JsonRpcProvider(
+        "https://public-node.testnet.rsk.co"
+      );
+    } else if (numericChainId === 44787) {
+      provider = new ethers.providers.JsonRpcProvider(
+        "https://alfajores-forno.celo-testnet.org"
+      );
+    } else {
+      provider = ethers.getDefaultProvider(numericChainId);
+    }
+
+    const tokenContract = new ethers.Contract(
+      token,
+      ["function balanceOf(address) view returns (uint256)"],
+      provider
+    );
+    const balanceResult = await tokenContract.balanceOf(userAddress);
+
+    const formattedBalance = BigInt(balanceResult).toString();
+    return formattedBalance;
+  } catch (error) {
+    console.error("Error in getTokenBalance:", error);
+    return "0";
+  }
+};
+
 // Update integration object to include the new client initialization function
 export const integration = {
   deposit,
@@ -2599,5 +2584,6 @@ export const integration = {
   resolveEnsName,
   addBalancerLiquidity,
   getPoolInformation: sdkGetPoolInformation,
+  getTokenBalance,
   initializeClient,
 };

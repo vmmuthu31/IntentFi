@@ -130,17 +130,15 @@ export const getNativeTokenIcon = (symbol: string): string => {
     case "ETH":
       return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJDn0ojTITvcdAzMsfBMJaZC4STaDHzduleQ&s";
     case "POL":
-      return "https://cryptologos.cc/logos/polygon-matic-logo.png";
+      return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSOtTn1FCMxUQ8oGPeTMijey3aSl-jkpmaDgQ&s";
     case "BNB":
-      return "https://cryptologos.cc/logos/bnb-bnb-logo.png";
+      return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQP9cUvoCvmCXO4pNHvnREHBCKW30U-BVxKfg&s";
     case "CELO":
       return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyejSxfv1VRb4-lAhpR2xyG-_-A1XH0n9riw&s";
     case "RBTC":
-      return "https://cryptologos.cc/logos/rootstock-rbtc-logo.png";
-    case "IFI":
-      return "https://cryptologos.cc/logos/crypto-com-chain-cro-logo.png"; // Placeholder
+      return "https://media.licdn.com/dms/image/v2/C4E0BAQETO-bFGz36Ug/company-logo_200_200/company-logo_200_200/0/1675879911852/rootstock_io_logo?e=2147483647&v=beta&t=p0pXl3WpudEBeKjb8oNbQMKxow8hiCAV6Iis3_VnK6w";
     default:
-      return "https://cryptologos.cc/logos/ethereum-eth-logo.png";
+      return "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJDn0ojTITvcdAzMsfBMJaZC4STaDHzduleQ&s";
   }
 };
 
