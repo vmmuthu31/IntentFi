@@ -11,6 +11,7 @@ import Link from "next/link";
 import IntentAgent from "@/components/intent/IntentAgent";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import WalletConnect from "@/components/ui/WalletConnect";
 
 // Add a custom type that extends IntentExecutionPlan
 type IntentResultWithMetadata = IntentExecutionPlan & {
@@ -30,7 +31,7 @@ export default function IntentPage() {
     }>
   >([]);
 
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
 
   // This function is called by the IntentAgent component
   const handleCreateIntent = async (newIntent: string) => {
@@ -170,12 +171,19 @@ export default function IntentPage() {
                     </div>
                   </motion.h2>
 
-                  <div className="relative">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-orange-600/10 to-orange-900/10 rounded-xl blur-xl"></div>
-                    <div className="relative h-[800px]">
-                      <IntentAgent onCreateIntent={handleCreateIntent} />
+                  {isConnected ? (
+                    <div className="relative">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-orange-600/10 to-orange-900/10 rounded-xl blur-xl"></div>
+                      <div className="relative h-[800px]">
+                        <IntentAgent onCreateIntent={handleCreateIntent} />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-gray-500 flex items-center gap-2 text-sm font-light">
+                      Connect your wallet to start using IntentFi Agent{" "}
+                      <WalletConnect />
+                    </div>
+                  )}
                 </div>
 
                 {intentResult && (
@@ -259,8 +267,8 @@ export default function IntentPage() {
                                       step.chain === "celoAlfajores"
                                         ? `https://alfajores.celoscan.io/tx/${step.transactionHash}`
                                         : step.chain === "rootstock"
-                                        ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
-                                        : `#`
+                                          ? `https://explorer.testnet.rootstock.io/tx/${step.transactionHash}`
+                                          : `#`
                                     }
                                     target="_blank"
                                     rel="noopener noreferrer"

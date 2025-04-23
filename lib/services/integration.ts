@@ -8,7 +8,6 @@
 import { BigNumber, ethers } from "ethers";
 import mintABI from "../../artifacts/MockToken.json";
 import lendingPoolABI from "../../artifacts/LendingPool.json";
-import priceOracleABI from "../../artifacts/PriceOracle.json";
 import yieldFarmingABI from "../../artifacts/YieldFarm.json";
 import {
   createPublicClient,
@@ -17,7 +16,7 @@ import {
   encodeFunctionData,
   Account,
   Chain,
-  Authorization,
+  WalletClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { celoAlfajores, rootstockTestnet } from "viem/chains";
@@ -30,19 +29,73 @@ import {
   bridgeTokens,
   resolveEnsName,
   addBalancerLiquidity,
+  getPoolInformation as sdkGetPoolInformation,
 } from "./goat-sdk-service";
 
-type TransactionRequest = {
-  account: Account;
+// Export GOAT SDK services for use in other modules
+export {
+  getPricePrediction,
+  getTokenInsights,
+  getTokenInfo,
+  bridgeTokens,
+  resolveEnsName,
+  addBalancerLiquidity,
+  sdkGetPoolInformation as getPoolInformation,
+};
+
+// Export blockchain interaction functions
+export {
+  deposit,
+  withdraw,
+  borrow,
+  repay,
+  listToken,
+  createPool,
+  stake,
+  getPoolInformation as localGetPoolInformation,
+};
+
+// Fix the TransactionRequest definition to match viem's type requirements
+export type TransactionRequest = {
+  to?: `0x${string}`;
+  from?: `0x${string}`;
+  nonce?: bigint; // Changed from number to bigint for correct typing
+  gas?: bigint;
+  gasPrice?: bigint;
+  value?: bigint;
+  data?: `0x${string}`;
+  type?: "legacy" | "eip2930" | "eip1559";
+  chain?: Chain;
+};
+
+/**
+ * Helper function to prepare transaction for wallet client
+ */
+const prepareTransaction = (params: {
+  account: Account | { address: `0x${string}` };
   to: `0x${string}`;
   data: `0x${string}`;
   gas: bigint;
   gasPrice: bigint;
-  nonce: bigint;
+  nonce: bigint | number;
   chain: Chain;
-  value?: bigint;
-  type?: "legacy" | "eip2930" | "eip1559";
-  authorizationList?: Authorization[];
+}) => {
+  // Convert simple address objects to string addresses
+  const account =
+    "address" in params.account && !("signMessage" in params.account)
+      ? params.account.address
+      : params.account;
+
+  return {
+    account,
+    to: params.to,
+    data: params.data,
+    gas: params.gas,
+    gasPrice: params.gasPrice,
+    nonce:
+      typeof params.nonce === "bigint" ? Number(params.nonce) : params.nonce, // Convert bigint to number for viem compatibility
+    chain: params.chain,
+  };
 };
 
 const NETWORK_CONFIGS = {
@@ -68,7 +121,8 @@ const NETWORK_CONFIGS = {
     chain: celoAlfajores,
     name: "celoAlfajores",
     network: "celo-alfajores",
-    rpcUrl: process.env.RPC_URL,
+    rpcUrl:
+      process.env.CELO_RPC_URL || "https://alfajores-forno.celo-testnet.org",
     nativeCurrency: {
       decimals: 18,
       name: "CELO",
@@ -108,11 +162,71 @@ const parseUnits = (value: string, decimals = 18) => {
   return ethers.utils.parseUnits(value.toString(), decimals);
 };
 
+// Define types for the sendTransaction function parameters
+type SendTransactionParams = {
+  isBrowser: boolean;
+  walletClient: WalletClient;
+  account: `0x${string}` | Account;
+  to: string;
+  data: `0x${string}`;
+  gas: bigint;
+  gasPrice: bigint;
+  nonce: number | bigint; // Accept both number and bigint
+  chain: Chain;
+};
+
+// Helper function to send transactions in both browser and server environments
+const sendTransaction = async ({
+  isBrowser,
+  walletClient,
+  account,
+  to,
+  data,
+  gas,
+  gasPrice,
+  nonce,
+  chain,
+}: SendTransactionParams): Promise<`0x${string}`> => {
+  if (isBrowser) {
+    // Browser environment - use window.ethereum
+    // Get the address from the account object or string
+    const fromAddress = typeof account === "string" ? account : account.address;
+
+    const hash = await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [
+        {
+          from: fromAddress,
+          to,
+          data,
+          gas: `0x${gas.toString(16)}`,
+          gasPrice: `0x${gasPrice.toString(16)}`,
+        },
+      ],
+    });
+    console.log("Transaction sent via browser wallet:", hash);
+    return hash as `0x${string}`;
+  } else {
+    // Server environment - use viem wallet client
+    const hash = await walletClient.sendTransaction({
+      account, // walletClient.sendTransaction accepts Account | address
+      to: to as `0x${string}`,
+      data,
+      gas,
+      gasPrice,
+      nonce: typeof nonce === "bigint" ? Number(nonce) : nonce, // Convert to number if it's a bigint
+      chain,
+    });
+    console.log("Transaction sent via wallet client:", hash);
+    return hash;
+  }
+};
+
+// Update initalizeClients to detect browser environment
 const initalizeClients = async ({ chainId }: { chainId: number }) => {
   if (!process.env.PRIVATE_KEY) {
     throw new Error("Private key not found");
   }
-  const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
 
   // Convert chainId to number if it's a string
   const numericChainId =
@@ -150,16 +264,25 @@ const initalizeClients = async ({ chainId }: { chainId: number }) => {
   }
 
   const chain = networkConfig.chain;
+  const rpcUrl = networkConfig.rpcUrl;
   const publicClient = createPublicClient({
     chain,
-    transport: http(process.env.RPC_URL),
+    transport: http(rpcUrl),
   });
+
+  // Check if we're in a browser environment before using window.ethereum
+  const isClient = typeof window !== "undefined";
   const walletClient = createWalletClient({
-    account,
     chain,
-    transport: http(process.env.RPC_URL),
+    transport: isClient && window.ethereum ? window.ethereum : http(rpcUrl),
   });
-  return { publicClient, walletClient };
+
+  return {
+    publicClient,
+    walletClient,
+    isBrowser: isClient && !!window.ethereum,
+    chain,
+  };
 };
 
 /**
@@ -229,7 +352,7 @@ const approveWithWagmi = async ({ chainId }: { chainId: number }) => {
           ],
         });
 
-        const txParams: TransactionRequest = {
+        const txParams = prepareTransaction({
           account,
           to: tokenAddress as `0x${string}`,
           data,
@@ -237,10 +360,9 @@ const approveWithWagmi = async ({ chainId }: { chainId: number }) => {
           gasPrice,
           nonce: BigInt(nonce) + BigInt(results.length),
           chain: networkConfig.chain,
-        };
+        });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hash = await walletClient.sendTransaction(txParams as any);
+        const hash = await walletClient.sendTransaction(txParams);
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
         results.push({
@@ -307,88 +429,6 @@ const approveWithWagmi = async ({ chainId }: { chainId: number }) => {
   }
 };
 
-const setTokenPrice = async ({
-  chainId,
-  token,
-  price,
-}: {
-  chainId: number;
-  token: string;
-  price: string;
-}) => {
-  const { publicClient, walletClient } = await initalizeClients({ chainId });
-  const networkConfig = Object.values(NETWORK_CONFIGS).find(
-    (config) => config.chainId === chainId
-  );
-  if (!networkConfig) {
-    throw new Error("Network config not found");
-  }
-  if (!process.env.PRIVATE_KEY) {
-    throw new Error("Private key not found");
-  }
-  const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-  const contractAddress = networkConfig.contractAddresses.PriceOracle;
-  const tokenAddress =
-    networkConfig.contractAddresses.Token[
-      token as keyof typeof networkConfig.contractAddresses.Token
-    ];
-
-  const data = encodeFunctionData({
-    abi: priceOracleABI,
-    functionName: "setTokenPrice",
-    args: [tokenAddress, price],
-  });
-
-  const gasLimit = BigInt(100000);
-  const [gasPrice, nonce] = await Promise.all([
-    publicClient.getGasPrice(),
-    publicClient.getTransactionCount({
-      address: account.address,
-      blockTag: "pending",
-    }),
-  ]);
-  const txParams: TransactionRequest = {
-    account,
-    to: contractAddress as `0x${string}`,
-    data,
-    gas: gasLimit,
-    gasPrice,
-    nonce: BigInt(nonce),
-    chain: networkConfig.chain,
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hash = await walletClient.sendTransaction(txParams as any);
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  const formattedReceipt = {
-    blockHash: receipt.blockHash,
-    blockNumber: receipt.blockNumber.toString(),
-    contractAddress: receipt.contractAddress,
-    cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-    effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-    from: receipt.from,
-    gasUsed: receipt.gasUsed.toString(),
-    logs: receipt.logs.map((log) => ({
-      ...log,
-      blockNumber: log.blockNumber.toString(),
-      logIndex: log.logIndex.toString(),
-      transactionIndex: log.transactionIndex.toString(),
-    })),
-    logsBloom: receipt.logsBloom,
-    status: receipt.status,
-    to: receipt.to,
-    transactionHash: receipt.transactionHash,
-    transactionIndex: receipt.transactionIndex.toString(),
-    type: receipt.type,
-  };
-
-  return {
-    success: receipt.status === "success",
-    transactionHash: hash,
-    receipt: formattedReceipt,
-  };
-};
-
 const getTokenBalance = async ({
   chainId,
   token,
@@ -396,6 +436,7 @@ const getTokenBalance = async ({
   chainId: number;
   token: string;
 }) => {
+  try {
   const { publicClient } = await initalizeClients({ chainId });
   if (!process.env.PRIVATE_KEY) {
     throw new Error("Private key not found");
@@ -411,16 +452,55 @@ const getTokenBalance = async ({
     networkConfig.contractAddresses.Token[
       token as keyof typeof networkConfig.contractAddresses.Token
     ];
-  const balance = await publicClient.readContract({
+
+    if (!tokenAddress) {
+      console.warn(
+        `Token ${token} not found in network config for chain ${chainId}`
+      );
+      return "0";
+    }
+
+    // Verify if the contract exists at the address
+    console.log(
+      `Checking balance for token: ${token} at address: ${tokenAddress}`
+    );
+    const contractCode = await publicClient
+      .getBytecode({
+        address: tokenAddress as `0x${string}`,
+      })
+      .catch((error) => {
+        console.warn(`Error checking contract code for ${token}:`, error);
+        return null;
+      });
+
+    if (!contractCode || contractCode === "0x") {
+      console.warn(
+        `No contract found at address ${tokenAddress} for token ${token}`
+      );
+      return "0";
+    }
+
+    const balance = await publicClient
+      .readContract({
     address: tokenAddress as `0x${string}`,
     abi: mintABI,
     functionName: "balanceOf",
     args: [account.address],
+      })
+      .catch((error) => {
+        console.warn(`Error checking balance for ${token}:`, error);
+        return BigInt(0);
   });
+
   return BigInt(balance as bigint).toString();
+  } catch (error) {
+    console.error(`Error getting balance for ${token}:`, error);
+    return "0"; // Return 0 balance on error instead of failing
+  }
 };
 
 const checkAllowance = async ({ chainId }: { chainId: number }) => {
+  try {
   const { publicClient } = await initalizeClients({ chainId });
   if (!process.env.PRIVATE_KEY) {
     throw new Error("Private key not found");
@@ -434,8 +514,31 @@ const checkAllowance = async ({ chainId }: { chainId: number }) => {
   }
   const tokens = networkConfig.contractAddresses.Token;
   const allowances: { token: string; allowance: string }[] = [];
+
   for (const [tokenSymbol, tokenAddress] of Object.entries(tokens)) {
-    const tokenAllowance = await publicClient.readContract({
+      try {
+        console.log(
+          `Checking allowance for token: ${tokenSymbol} at address: ${tokenAddress}`
+        );
+
+        // Verify if the contract exists at the address
+        const contractCode = await publicClient.getBytecode({
+          address: tokenAddress as `0x${string}`,
+        });
+
+        if (!contractCode || contractCode === "0x") {
+          console.warn(
+            `No contract found at address ${tokenAddress} for token ${tokenSymbol}`
+          );
+          allowances.push({
+            token: tokenSymbol,
+            allowance: "0",
+          });
+          continue;
+        }
+
+        const tokenAllowance = await publicClient
+          .readContract({
       address: tokenAddress as `0x${string}`,
       abi: mintABI,
       functionName: "allowance",
@@ -443,31 +546,58 @@ const checkAllowance = async ({ chainId }: { chainId: number }) => {
         account.address,
         networkConfig.contractAddresses.LendingPool as `0x${string}`,
       ],
+          })
+          .catch((error) => {
+            console.warn(`Error checking allowance for ${tokenSymbol}:`, error);
+            return BigInt(0); // Return 0 on error
     });
+
     allowances.push({
       token: tokenSymbol,
       allowance: BigInt(tokenAllowance as bigint).toString(),
     });
+      } catch (error) {
+        console.warn(`Failed to check allowance for ${tokenSymbol}:`, error);
+        allowances.push({
+          token: tokenSymbol,
+          allowance: "0",
+        });
+      }
   }
   return allowances;
+  } catch (error) {
+    console.error("Error in checkAllowance:", error);
+    // Return empty allowances array instead of throwing error
+    return [];
+  }
 };
 
 const fundFaucet = async ({ chainId }: { chainId: number }) => {
   try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("Private key not found");
-    }
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    const { publicClient, walletClient, chain } = await initalizeClients({
+      chainId,
+    });
     const networkConfig = Object.values(NETWORK_CONFIGS).find(
       (config) => config.chainId === chainId
     );
     if (!networkConfig) {
       throw new Error("Network config not found");
     }
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error("Private key not found");
+    }
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
     const tokens = networkConfig.contractAddresses.Token;
+
+    const [gasPrice, nonce] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
+    ]);
+
     const gasLimit = BigInt(100000);
-    const [gasPrice] = await Promise.all([publicClient.getGasPrice()]);
     const balance = await publicClient.getBalance({ address: account.address });
     const totalTokens = Object.keys(tokens).length;
 
@@ -494,16 +624,16 @@ const fundFaucet = async ({ chainId }: { chainId: number }) => {
           functionName: "faucet",
           args: [amount],
         });
-        const txParams = {
+        const txParams = prepareTransaction({
           account,
           to: tokenAddress as `0x${string}`,
           data,
           gas: gasLimit,
           gasPrice,
-          chain: networkConfig.chain,
-        };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hash = await walletClient.sendTransaction(txParams as any);
+          nonce: BigInt(nonce) + BigInt(results.length),
+          chain: chain,
+        });
+        const hash = await walletClient.sendTransaction(txParams);
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
         // Format BigInt values to strings
@@ -556,24 +686,99 @@ const deposit = async ({
   amount: string;
 }) => {
   try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const { publicClient, walletClient, isBrowser, chain } =
+      await initalizeClients({ chainId });
 
+    // Create the appropriate account
+    let account;
+    if (isBrowser) {
+      // Browser environment - get user's wallet address
+      const [address] = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      account = { address: address as `0x${string}` };
+      console.log("Using browser wallet account:", address);
+    } else {
+      // Server environment - use private key
     if (!process.env.PRIVATE_KEY) {
       throw new Error("Private key not found");
     }
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+      account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+      console.log("Using private key account");
+    }
+
     const networkConfig = Object.values(NETWORK_CONFIGS).find(
       (config) => config.chainId === chainId
     );
     if (!networkConfig) {
       throw new Error("Network config not found");
     }
-    const chain = networkConfig.chain;
+
     const contractAddress = networkConfig.contractAddresses.LendingPool;
     const tokenAddress =
       networkConfig.contractAddresses.Token[
         token as keyof typeof networkConfig.contractAddresses.Token
       ];
+
+    if (!tokenAddress) {
+      return {
+        success: false,
+        error: `Token ${token} not found in network config for chain ${chainId}`,
+      };
+    }
+
+    // Verify if the token contract exists
+    console.log(
+      `Verifying token contract: ${token} at address: ${tokenAddress}`
+    );
+    const tokenContractCode = await publicClient
+      .getBytecode({
+        address: tokenAddress as `0x${string}`,
+      })
+      .catch((error) => {
+        console.warn(`Error checking token contract code:`, error);
+        return null;
+      });
+
+    if (!tokenContractCode || tokenContractCode === "0x") {
+      return {
+        success: false,
+        error: `Token contract not found at ${tokenAddress}`,
+        details: {
+          message: `The token contract for ${token} does not exist at the configured address.`,
+          tokenAddress,
+          solution:
+            "Please update the contract address configuration or deploy the token contract.",
+        },
+      };
+    }
+
+    // Also verify if lending pool contract exists
+    console.log(
+      `Verifying lending pool contract at address: ${contractAddress}`
+    );
+    const poolContractCode = await publicClient
+      .getBytecode({
+        address: contractAddress as `0x${string}`,
+      })
+      .catch((error) => {
+        console.warn(`Error checking lending pool contract code:`, error);
+        return null;
+      });
+
+    if (!poolContractCode || poolContractCode === "0x") {
+      return {
+        success: false,
+        error: `Lending pool contract not found at ${contractAddress}`,
+        details: {
+          message:
+            "The lending pool contract does not exist at the configured address.",
+          contractAddress,
+          solution:
+            "Please update the contract address configuration or deploy the lending pool contract.",
+        },
+      };
+    }
 
     // Check token-specific allowance
     const allowances = await checkAllowance({ chainId });
@@ -586,8 +791,19 @@ const deposit = async ({
       !tokenAllowance ||
       BigInt(tokenAllowance.allowance) < BigInt(amountInWei)
     ) {
+      console.log(
+        `Insufficient allowance for ${token}, attempting approval...`
+      );
       const approvalResults = await approveWithWagmi({ chainId });
       console.log("Approval results:", JSON.stringify(approvalResults));
+
+      if (!approvalResults.success) {
+        return {
+          success: false,
+          error: `Failed to approve ${token} tokens for deposit`,
+          details: approvalResults,
+        };
+      }
 
       const updatedAllowances = await checkAllowance({ chainId });
       const updatedTokenAllowance = updatedAllowances.find(
@@ -598,7 +814,16 @@ const deposit = async ({
         !updatedTokenAllowance ||
         BigInt(updatedTokenAllowance.allowance) < BigInt(amountInWei)
       ) {
-        throw new Error(`Failed to approve enough ${token} tokens for deposit`);
+        return {
+          success: false,
+          error: `Failed to approve enough ${token} tokens for deposit`,
+          details: {
+            required: amount,
+            approved: updatedTokenAllowance
+              ? updatedTokenAllowance.allowance
+              : "0",
+          },
+        };
       }
     }
 
@@ -607,6 +832,9 @@ const deposit = async ({
 
     // Convert amount to Wei for balance comparison
     if (BigInt(tokenBalance) < BigInt(amountInWei)) {
+      console.log(
+        `Insufficient ${token} balance, trying to get from faucet...`
+      );
       const faucetResults = await fundFaucet({ chainId });
       console.log("Faucet results:", JSON.stringify(faucetResults));
 
@@ -614,7 +842,15 @@ const deposit = async ({
       const updatedBalance = await getTokenBalance({ chainId, token });
 
       if (BigInt(updatedBalance) < BigInt(amountInWei)) {
-        throw new Error(`Failed to get enough ${token} tokens from faucet`);
+        return {
+          success: false,
+          error: `Failed to get enough ${token} tokens from faucet`,
+          details: {
+            required: amount,
+            balance: formatUnits(updatedBalance, 18),
+            faucetResults,
+          },
+        };
       }
     }
 
@@ -654,18 +890,47 @@ const deposit = async ({
       args: [tokenAddress, tokenAmount],
     });
 
-    const txParams = {
-      account,
+    // First simulate the transaction to check for failures
+    console.log("Simulating deposit transaction...");
+
+    try {
+      await publicClient.simulateContract({
+        address: contractAddress as `0x${string}`,
+        abi: lendingPoolABI,
+        functionName: "deposit",
+        args: [tokenAddress, tokenAmount],
+        account: account.address,
+      });
+      console.log("Deposit simulation successful, proceeding with transaction");
+    } catch (simError) {
+      console.error("Deposit simulation failed:", simError);
+      return {
+        success: false,
+        error: "Transaction would fail",
+        details: {
+          message: `The deposit transaction would fail: ${simError instanceof Error ? simError.message : String(simError)}`,
+          suggestion:
+            "Contract may not be deployed correctly or token is incompatible",
+        },
+      };
+    }
+
+    console.log("Sending deposit transaction...");
+
+    // Use the sendTransaction helper function
+    const txAddress = typeof account === "string" ? account : account.address;
+
+    const hash = await sendTransaction({
+      isBrowser,
+      walletClient,
+      account: txAddress,
       to: contractAddress as `0x${string}`,
       data,
       gas: gasLimit,
       gasPrice,
       nonce: Number(nonce),
-      chain: chain,
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hash = await walletClient.sendTransaction(txParams as any);
+      chain,
+    });
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
@@ -738,25 +1003,102 @@ const withdraw = async ({
   amount: string;
 }) => {
   try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
+    const { publicClient, walletClient, isBrowser, chain } =
+      await initalizeClients({ chainId });
+
+    // Create the appropriate account
+    let account;
+    if (isBrowser) {
+      // Browser environment - get user's wallet address
+      const [address] = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      account = { address: address as `0x${string}` };
+      console.log("Using browser wallet account:", address);
+    } else {
+      // Server environment - use private key
     if (!process.env.PRIVATE_KEY) {
       throw new Error("Private key not found");
     }
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+      account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+      console.log("Using private key account");
+    }
+
     const networkConfig = Object.values(NETWORK_CONFIGS).find(
       (config) => config.chainId === chainId
     );
     if (!networkConfig) {
       throw new Error("Network config not found");
     }
-    const chain = networkConfig.chain;
+
     const contractAddress = networkConfig.contractAddresses.LendingPool;
     const tokenAddress =
       networkConfig.contractAddresses.Token[
         token as keyof typeof networkConfig.contractAddresses.Token
       ];
 
+    if (!tokenAddress) {
+      return {
+        success: false,
+        error: `Token ${token} not found in network config for chain ${chainId}`,
+      };
+    }
+
+    // Verify if the token contract exists
+    console.log(
+      `Verifying token contract: ${token} at address: ${tokenAddress}`
+    );
+    const tokenContractCode = await publicClient
+      .getBytecode({
+        address: tokenAddress as `0x${string}`,
+      })
+      .catch((error) => {
+        console.warn(`Error checking token contract code:`, error);
+        return null;
+      });
+
+    if (!tokenContractCode || tokenContractCode === "0x") {
+      return {
+        success: false,
+        error: `Token contract not found at ${tokenAddress}`,
+        details: {
+          message: `The token contract for ${token} does not exist at the configured address.`,
+          tokenAddress,
+          solution:
+            "Please update the contract address configuration or deploy the token contract.",
+        },
+      };
+    }
+
+    // Also verify if lending pool contract exists
+    console.log(
+      `Verifying lending pool contract at address: ${contractAddress}`
+    );
+    const poolContractCode = await publicClient
+      .getBytecode({
+        address: contractAddress as `0x${string}`,
+      })
+      .catch((error) => {
+        console.warn(`Error checking lending pool contract code:`, error);
+        return null;
+      });
+
+    if (!poolContractCode || poolContractCode === "0x") {
+      return {
+        success: false,
+        error: `Lending pool contract not found at ${contractAddress}`,
+        details: {
+          message:
+            "The lending pool contract does not exist at the configured address.",
+          contractAddress,
+          solution:
+            "Please update the contract address configuration or deploy the lending pool contract.",
+        },
+      };
+    }
+
     // Check token balance
+    console.log(`Checking ${token} balance...`);
     const tokenBalance = await getTokenBalance({ chainId, token });
     console.log(`${token} balance:`, tokenBalance);
 
@@ -764,7 +1106,9 @@ const withdraw = async ({
     const amountInWei = parseUnits(amount, 18).toString();
 
     if (BigInt(tokenBalance) < BigInt(amountInWei)) {
-      console.log(`Insufficient ${token} balance, getting from faucet...`);
+      console.log(
+        `Insufficient ${token} balance, trying to get from faucet...`
+      );
       const faucetResults = await fundFaucet({ chainId });
       console.log("Faucet results:", JSON.stringify(faucetResults));
 
@@ -772,7 +1116,15 @@ const withdraw = async ({
       const updatedBalance = await getTokenBalance({ chainId, token });
 
       if (BigInt(updatedBalance) < BigInt(amountInWei)) {
-        throw new Error(`Failed to get enough ${token} tokens from faucet`);
+        return {
+          success: false,
+          error: `Failed to get enough ${token} tokens from faucet`,
+          details: {
+            required: amount,
+            balance: formatUnits(updatedBalance, 18),
+            faucetResults,
+          },
+        };
       }
     }
 
@@ -803,26 +1155,59 @@ const withdraw = async ({
 
     const tokenAmount = parseUnits(amount, 18);
 
-    const data = encodeFunctionData({
+    const withdrawData = encodeFunctionData({
       abi: lendingPoolABI,
       functionName: "withdraw",
       args: [tokenAddress, tokenAmount],
     });
 
-    const txParams = {
-      account,
-      to: contractAddress,
-      data,
+    // First simulate the transaction to check for failures
+    console.log("Simulating withdraw transaction...");
+
+    try {
+      await publicClient.simulateContract({
+        address: contractAddress as `0x${string}`,
+        abi: lendingPoolABI,
+        functionName: "withdraw",
+        args: [tokenAddress, tokenAmount],
+        account: account.address,
+      });
+      console.log(
+        "Withdraw simulation successful, proceeding with transaction"
+      );
+    } catch (simError) {
+      console.error("Withdraw simulation failed:", simError);
+      return {
+        success: false,
+        error: "Transaction would fail",
+        details: {
+          message: `The withdraw transaction would fail: ${simError instanceof Error ? simError.message : String(simError)}`,
+          suggestion:
+            "Contract may not be deployed correctly or you have no tokens deposited",
+        },
+      };
+    }
+
+    console.log("Sending withdraw transaction...");
+
+    // Use the sendTransaction helper function
+    const txAddress = typeof account === "string" ? account : account.address;
+
+    const hash = await sendTransaction({
+      isBrowser,
+      walletClient,
+      account: txAddress,
+      to: contractAddress as `0x${string}`,
+      data: withdrawData,
       gas: gasLimit,
       gasPrice,
-      nonce: BigInt(nonce),
-      chain: chain,
-    };
+      nonce: Number(nonce),
+      chain,
+    });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hash = await walletClient.sendTransaction(txParams as any);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: hash,
+    });
 
     if (receipt.status === "reverted") {
       console.error("Transaction reverted!");
@@ -832,7 +1217,7 @@ const withdraw = async ({
         const revertReason = await publicClient.call({
           account: account.address,
           to: contractAddress as `0x${string}`,
-          data,
+          data: withdrawData,
           gas: gasLimit,
           gasPrice,
           nonce: Number(nonce),
@@ -1024,15 +1409,15 @@ const borrow = async ({
     // Add a small buffer to gas price for faster confirmation
     const adjustedGasPrice = (gasPrice * BigInt(115)) / BigInt(100); // 15% buffer
 
-    const txParams = {
+    const txParams = prepareTransaction({
       account,
-      to: contractAddress,
+      to: contractAddress as `0x${string}`,
       data,
       gas: gasLimit,
       gasPrice: adjustedGasPrice,
       nonce: BigInt(nonce),
       chain: chain,
-    };
+    });
 
     // Send transaction with improved error handling
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1248,15 +1633,15 @@ const repay = async ({
       }),
     ]);
 
-    const txParams = {
+    const txParams = prepareTransaction({
       account,
-      to: contractAddress,
+      to: contractAddress as `0x${string}`,
       data,
       gas: gasLimit,
       gasPrice,
       nonce: BigInt(nonce),
       chain: chain,
-    };
+    });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hash = await walletClient.sendTransaction(txParams as any);
@@ -1477,7 +1862,7 @@ const listToken = async ({
       };
     }
 
-    const txParams = {
+    const txParams = prepareTransaction({
       account,
       to: contractAddress as `0x${string}`,
       data,
@@ -1485,7 +1870,7 @@ const listToken = async ({
       gasPrice,
       nonce: BigInt(nonce),
       chain: chain,
-    };
+    });
 
     console.log("Sending actual transaction...");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1642,7 +2027,7 @@ const createPool = async ({
       }),
     ]);
 
-    const txParams = {
+    const txParams = prepareTransaction({
       account,
       to: contractAddress.YieldFarming as `0x${string}`,
       data,
@@ -1650,7 +2035,7 @@ const createPool = async ({
       gasPrice,
       nonce: BigInt(nonce),
       chain: chain,
-    };
+    });
 
     console.log("Sending actual transaction...");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1723,15 +2108,15 @@ const createPool = async ({
           });
 
           // Use type assertion for the transaction parameters
-          const activateTxParams = {
+          const activateTxParams = prepareTransaction({
             account,
             to: contractAddress.YieldFarming as `0x${string}`,
             data: activateData,
             gas: gasLimit,
             gasPrice,
-            nonce: Number(nonce) + 1, // Use next nonce as a number
+            nonce: BigInt(nonce) + BigInt(1), // Use next nonce as a number
             chain: chain,
-          };
+          });
 
           console.log("Activating the pool...");
           const activateHash = await walletClient.sendTransaction(
@@ -1941,7 +2326,7 @@ const stake = async ({
         args: [Amount], // 1,000,000 tokens with 18 decimals
       });
 
-      const faucetParams = {
+      const faucetParams = prepareTransaction({
         account,
         to: stakingToken as `0x${string}`,
         data: faucetData,
@@ -1952,7 +2337,7 @@ const stake = async ({
           blockTag: "pending",
         }),
         chain: chain,
-      };
+      });
 
       const faucetHash = await walletClient.sendTransaction(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2018,7 +2403,7 @@ const stake = async ({
         ],
       });
 
-      const approveParams = {
+      const approveParams = prepareTransaction({
         account,
         to: stakingToken as `0x${string}`,
         data: approveData,
@@ -2029,7 +2414,7 @@ const stake = async ({
           blockTag: "pending",
         }),
         chain: chain,
-      };
+      });
 
       const approveHash = await walletClient.sendTransaction(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2040,615 +2425,179 @@ const stake = async ({
       const approveReceipt = await publicClient.waitForTransactionReceipt({
         hash: approveHash,
       });
+
       if (approveReceipt.status === "reverted") {
         return {
           success: false,
-          error: "Token approval failed",
+          error: "Approval transaction failed.",
           transactionHash: approveHash,
           receipt: approveReceipt,
         };
       }
     }
 
-    // Simulate the staking transaction first
-    try {
-      console.log("Simulating stake transaction...");
-      await publicClient.simulateContract({
-        address: contractAddress.YieldFarming as `0x${string}`,
-        abi: yieldFarmingABI,
-        functionName: "stake",
-        args: [BigInt(poolId), ethers.utils.parseUnits(amount, 18)],
-        account: account.address,
-      });
-      console.log("Simulation successful, proceeding with actual transaction");
-    } catch (simulationError) {
-      console.error("Stake simulation failed:", simulationError);
-
-      // Check if this is the StakingPaused error (0xfb8f41b2)
-      const errorMessage =
-        simulationError instanceof Error
-          ? simulationError.message
-          : String(simulationError);
-      if (errorMessage.includes("0xfb8f41b2")) {
-        return {
-          success: false,
-          error: "Staking is paused for this pool",
-          details: {
-            poolId,
-            errorCode: "0xfb8f41b2",
-            errorName: "StakingPaused",
-          },
-        };
-      }
-
-      return {
-        success: false,
-        error: `Simulation failed: ${errorMessage}`,
-        details: simulationError instanceof Error ? simulationError.cause : {},
-      };
-    }
+    // Prepare the staking transaction
+    console.log("Preparing staking transaction...");
 
     const stakeData = encodeFunctionData({
       abi: yieldFarmingABI,
       functionName: "stake",
-      args: [BigInt(poolId), ethers.utils.parseUnits(amount, 18)],
+      args: [BigInt(amountInWeiString)],
     });
 
-    const gasLimit = BigInt(300000);
-    const [gasPrice, nonce] = await Promise.all([
-      publicClient.getGasPrice(),
-      publicClient.getTransactionCount({
-        address: account.address,
-        blockTag: "pending",
-      }),
-    ]);
-
-    const txParams = {
+    const stakeParams = prepareTransaction({
       account,
       to: contractAddress.YieldFarming as `0x${string}`,
       data: stakeData,
-      gas: gasLimit,
-      gasPrice,
-      nonce: Number(nonce),
+      gas: BigInt(300000),
+      gasPrice: await publicClient.getGasPrice(),
+      nonce: await publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: "pending",
+      }),
       chain: chain,
-    };
+    });
 
-    console.log("Sending stake transaction...");
+    const hash = await walletClient.sendTransaction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hash = await walletClient.sendTransaction(txParams as any);
-    console.log("Stake transaction sent, hash:", hash);
+      stakeParams as any
+    );
+    console.log(`Staking transaction sent, hash: ${hash}`);
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
     if (receipt.status === "reverted") {
-      console.error("Stake transaction reverted!");
-      try {
-        const revertReason = await publicClient.call({
-          account: account.address,
-          to: contractAddress.YieldFarming as `0x${string}`,
-          data: stakeData,
-          gas: gasLimit,
-          gasPrice,
-        });
-        console.log("Revert reason:", revertReason);
-      } catch (error: unknown) {
-        console.error(
-          "Error getting revert reason:",
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-    }
-
-    const formattedReceipt = {
-      blockHash: receipt.blockHash,
-      blockNumber: receipt.blockNumber.toString(),
-      contractAddress: receipt.contractAddress,
-      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-      from: receipt.from,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.map((log) => ({
-        ...log,
-        blockNumber: log.blockNumber.toString(),
-        logIndex: log.logIndex.toString(),
-        transactionIndex: log.transactionIndex.toString(),
-      })),
-      logsBloom: receipt.logsBloom,
-      status: receipt.status,
-      to: receipt.to,
-      transactionHash: receipt.transactionHash,
-      transactionIndex: receipt.transactionIndex.toString(),
-      type: receipt.type,
-    };
-
     return {
-      success: receipt.status === "success",
-      transactionHash: hash,
-      receipt: formattedReceipt,
-    };
-  } catch (error) {
-    console.error("Error in stake:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      details: error instanceof Error ? error.cause : {},
-    };
-  }
-};
-
-const unstake = async ({
-  chainId,
-  poolId,
-  amount,
-}: {
-  chainId: number;
-  poolId: number;
-  amount: string;
-}) => {
-  try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
-    const networkConfig = Object.values(NETWORK_CONFIGS).find(
-      (config) => config.chainId === chainId
-    );
-
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("Private key not found");
-    }
-
-    if (!networkConfig) {
-      throw new Error("Network config not found");
-    }
-
-    const chain = networkConfig.chain;
-    const contractAddress = networkConfig.contractAddresses;
-
-    // Get pool info to validate unstaking
-    type RawPoolInfo = [
-      string, // stakingToken
-      string, // rewardToken
-      bigint, // rewardPerSecond
-      bigint, // lastUpdateTime
-      bigint, // accRewardPerShare
-      bigint, // totalStaked
-      bigint, // startTime
-      bigint, // endTime
-      boolean, // isActive
-    ];
-
-    const poolInfo = (await publicClient.readContract({
-      address: contractAddress.YieldFarming as `0x${string}`,
-      abi: yieldFarmingABI,
-      functionName: "pools",
-      args: [BigInt(poolId)],
-    })) as RawPoolInfo;
-
-    if (!poolInfo) {
-      throw new Error("Pool not found");
-    }
-
-    const stakingToken = poolInfo[0];
-    console.log(`Staking token address: ${stakingToken}`);
-
-    // Check token balance first
-    const tokenBalance = await publicClient.readContract({
-      address: stakingToken as `0x${string}`,
-      abi: mintABI,
-      functionName: "balanceOf",
-      args: [account.address],
-    });
-
-    // If balance is insufficient, use faucet to get tokens
-    if (BigInt(tokenBalance as bigint) < BigInt(amount)) {
-      console.log("Insufficient token balance. Getting tokens from faucet...");
-    }
-
-    // Check token allowance for the YieldFarming contract
-    const tokenAllowance = await publicClient.readContract({
-      address: stakingToken as `0x${string}`,
-      abi: mintABI,
-      functionName: "allowance",
-      args: [account.address, contractAddress.YieldFarming as `0x${string}`],
-    });
-
-    // If allowance is not enough, approve tokens first
-    if (BigInt(tokenAllowance as bigint) < BigInt(amount)) {
-      console.log("Approving tokens for unstaking...");
-    }
-
-    // Simulate the unstaking transaction first
-    try {
-      console.log("Simulating unstake transaction...");
-      await publicClient.simulateContract({
-        address: contractAddress.YieldFarming as `0x${string}`,
-        abi: yieldFarmingABI,
-        functionName: "unstake",
-        args: [BigInt(poolId), ethers.utils.parseUnits(amount)],
-        account: account.address,
-      });
-      console.log("Simulation successful, proceeding with actual transaction");
-    } catch (simulationError) {
-      console.error("Unstake simulation failed:", simulationError);
-      return {
         success: false,
-        error: `Simulation failed: ${
-          simulationError instanceof Error
-            ? simulationError.message
-            : String(simulationError)
-        }`,
-        details: simulationError instanceof Error ? simulationError.cause : {},
+        error: "Transaction failed",
+      transactionHash: hash,
+        receipt,
       };
     }
 
-    const unstakeData = encodeFunctionData({
-      abi: yieldFarmingABI,
-      functionName: "unstake",
-      args: [BigInt(poolId), ethers.utils.parseUnits(amount)],
-    });
-
-    const gasLimit = BigInt(300000);
-    const [gasPrice, nonce] = await Promise.all([
-      publicClient.getGasPrice(),
-      publicClient.getTransactionCount({
-        address: account.address,
-        blockTag: "pending",
-      }),
-    ]);
-
-    const txParams = {
-      account,
-      to: contractAddress.YieldFarming as `0x${string}`,
-      data: unstakeData,
-      gas: gasLimit,
-      gasPrice,
-      nonce: Number(nonce),
-      chain: chain,
-    };
-
-    console.log("Sending unstake transaction...");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hash = await walletClient.sendTransaction(txParams as any);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-    if (receipt.status === "reverted") {
-      console.error("Unstake transaction reverted!");
-      try {
-        const revertReason = await publicClient.call({
-          account: account.address,
-          to: contractAddress.YieldFarming as `0x${string}`,
-          data: unstakeData,
-          gas: gasLimit,
-          gasPrice,
-          nonce: Number(nonce),
-        });
-        console.log("Revert reason:", revertReason);
-      } catch (error: unknown) {
-        console.error(
-          "Error getting revert reason:",
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-    }
-
-    const formattedReceipt = {
-      blockHash: receipt.blockHash,
-      blockNumber: receipt.blockNumber.toString(),
-      contractAddress: receipt.contractAddress,
-      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-      from: receipt.from,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.map((log) => ({
-        ...log,
-        blockNumber: log.blockNumber.toString(),
-        logIndex: log.logIndex.toString(),
-        transactionIndex: log.transactionIndex.toString(),
-      })),
-      logsBloom: receipt.logsBloom,
-      status: receipt.status,
-      to: receipt.to,
-      transactionHash: receipt.transactionHash,
-      transactionIndex: receipt.transactionIndex.toString(),
-      type: receipt.type,
-    };
-
-    return {
-      success: receipt.status === "success",
+      return {
+      success: true,
       transactionHash: hash,
-      receipt: formattedReceipt,
+      receipt,
     };
   } catch (error) {
-    console.error("Error in unstake:", error);
+    console.error("Error in stake function:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
-      details: error instanceof Error ? error.cause : {},
-    };
-  }
-};
-
-// Get user information for all pools
-const getUserPoolInfo = async ({ chainId }: { chainId: number }) => {
-  try {
-    const { publicClient } = await initalizeClients({ chainId });
-    const networkConfig = Object.values(NETWORK_CONFIGS).find(
-      (config) => config.chainId === chainId
-    );
-    if (!networkConfig) {
-      throw new Error("Network config not found");
-    }
-    const contractAddress = networkConfig.contractAddresses;
-
-    const poolLength = (await publicClient.readContract({
-      address: contractAddress.YieldFarming as `0x${string}`,
-      abi: yieldFarmingABI,
-      functionName: "poolLength",
-    })) as bigint;
-
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-    const userAddress = account.address;
-    const userPoolInfo = [];
-
-    for (let i = 0; i < Number(poolLength); i++) {
-      try {
-        const info = (await publicClient.readContract({
-          address: contractAddress.YieldFarming as `0x${string}`,
-          abi: yieldFarmingABI,
-          functionName: "userInfo",
-          args: [BigInt(i), userAddress as `0x${string}`],
-        })) as [bigint, bigint];
-
-        const formattedInfo = {
-          poolId: i,
-          stakedAmount: {
-            raw: info[0].toString(),
-            formatted: formatUnits(info[0].toString(), 18),
-          },
-          rewardDebt: {
-            raw: info[1].toString(),
-            formatted: formatUnits(info[1].toString(), 18),
-          },
-        };
-
-        userPoolInfo.push(formattedInfo);
-      } catch (error) {
-        console.error(`Error fetching user info for pool ${i}:`, error);
-      }
-    }
-
-    return userPoolInfo;
-  } catch (error) {
-    console.error("Error in getUserInfo:", error);
-    throw error;
-  }
-};
-
-const claimRewards = async ({
-  chainId,
-  poolId,
-}: {
-  chainId: number;
-  poolId: number;
-}) => {
-  try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
-    const networkConfig = Object.values(NETWORK_CONFIGS).find(
-      (config) => config.chainId === chainId
-    );
-    if (!networkConfig) {
-      throw new Error("Network config not found");
-    }
-    const contractAddress = networkConfig.contractAddresses;
-
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-
-    const claimRewardsData = encodeFunctionData({
-      abi: yieldFarmingABI,
-      functionName: "claimRewards",
-      args: [BigInt(poolId)],
-    });
-
-    const gasLimit = BigInt(300000);
-    const [gasPrice, nonce] = await Promise.all([
-      publicClient.getGasPrice(),
-      publicClient.getTransactionCount({
-        address: account.address,
-        blockTag: "pending",
-      }),
-    ]);
-
-    const txParams = {
-      account,
-      to: contractAddress.YieldFarming as `0x${string}`,
-      data: claimRewardsData,
-      gas: gasLimit,
-      gasPrice,
-      nonce: Number(nonce),
-      chain: networkConfig.chain,
-    };
-
-    console.log("Sending claim rewards transaction...");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hash = await walletClient.sendTransaction(txParams as any);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-    if (receipt.status === "reverted") {
-      console.error("Claim rewards transaction reverted!");
-      try {
-        const revertReason = await publicClient.call({
-          account: account.address,
-          to: contractAddress.YieldFarming as `0x${string}`,
-          data: claimRewardsData,
-          gas: gasLimit,
-          gasPrice,
-          nonce: Number(nonce),
-        });
-        console.log("Revert reason:", revertReason);
-      } catch (error: unknown) {
-        console.error(
-          "Error getting revert reason:",
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-    }
-
-    const formattedReceipt = {
-      blockHash: receipt.blockHash,
-      blockNumber: receipt.blockNumber.toString(),
-      contractAddress: receipt.contractAddress,
-      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-      from: receipt.from,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.map((log) => ({
-        ...log,
-        blockNumber: log.blockNumber.toString(),
-        logIndex: log.logIndex.toString(),
-        transactionIndex: log.transactionIndex.toString(),
-      })),
-      logsBloom: receipt.logsBloom,
-      status: receipt.status,
-      to: receipt.to,
-      transactionHash: receipt.transactionHash,
-      transactionIndex: receipt.transactionIndex.toString(),
-      type: receipt.type,
-    };
-
-    return {
-      success: receipt.status === "success",
-      transactionHash: hash,
-      receipt: formattedReceipt,
-    };
-  } catch (error) {
-    console.error("Error in claimRewards:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      details: error instanceof Error ? error.cause : {},
-    };
-  }
-};
-
-const emergencyWithdraw = async ({
-  chainId,
-  poolId,
-}: {
-  chainId: number;
-  poolId: number;
-}) => {
-  try {
-    const { publicClient, walletClient } = await initalizeClients({ chainId });
-
-    const networkConfig = Object.values(NETWORK_CONFIGS).find(
-      (config) => config.chainId === chainId
-    );
-    if (!networkConfig) {
-      throw new Error("Network config not found");
-    }
-
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-
-    const emergencyWithdrawData = encodeFunctionData({
-      abi: yieldFarmingABI,
-      functionName: "emergencyWithdraw",
-      args: [BigInt(poolId)],
-    });
-
-    const gasLimit = BigInt(300000);
-    const [gasPrice, nonce] = await Promise.all([
-      publicClient.getGasPrice(),
-      publicClient.getTransactionCount({
-        address: account.address,
-        blockTag: "pending",
-      }),
-    ]);
-
-    if (!networkConfig) {
-      throw new Error("Network config not found");
-    }
-
-    const contractAddress = networkConfig.contractAddresses;
-
-    const txParams = {
-      account,
-      to: contractAddress.YieldFarming as `0x${string}`,
-      data: emergencyWithdrawData,
-      gas: gasLimit,
-      gasPrice,
-      nonce: Number(nonce),
-    };
-
-    const hash = await walletClient.sendTransaction(txParams);
-
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-    const formattedReceipt = {
-      blockHash: receipt.blockHash,
-      blockNumber: receipt.blockNumber.toString(),
-      contractAddress: receipt.contractAddress,
-      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-      effectiveGasPrice: receipt.effectiveGasPrice.toString(),
-      from: receipt.from,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.map((log) => ({
-        ...log,
-        blockNumber: log.blockNumber.toString(),
-        logIndex: log.logIndex.toString(),
-        transactionIndex: log.transactionIndex.toString(),
-      })),
-      logsBloom: receipt.logsBloom,
-      status: receipt.status,
-      to: receipt.to,
-      transactionHash: receipt.transactionHash,
-      transactionIndex: receipt.transactionIndex.toString(),
-      type: receipt.type,
-    };
-
-    return {
-      success: receipt.status === "success",
-      transactionHash: hash,
-      receipt: formattedReceipt,
-    };
-  } catch (error) {
-    console.error("Error in emergencyWithdraw:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      details: error instanceof Error ? error.cause : {},
+      error: extractRevertReason(error) || "An error occurred during staking",
+      details: error,
     };
   }
 };
 
 /**
- * Integration service object with methods for DeFi operations
+ * Initialize ethers client with browser wallet connection
+ * @returns Provider, signer and utility functions for contract interaction
  */
+export const initializeClient = async () => {
+  try {
+    // Check if window.ethereum exists (browser environment)
+    if (typeof window === "undefined" || !window.ethereum) {
+      throw new Error(
+        "No wallet detected. Please install MetaMask or a compatible wallet"
+      );
+    }
+
+    // Request account access
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+
+    // Create ethers provider using browser wallet
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    // Get the signer from the connected wallet
+    const signer = provider.getSigner();
+
+    // Get connected address
+    const address = await signer.getAddress();
+
+    // Get current network
+    const network = await provider.getNetwork();
+    const chainId = network.chainId;
+
+    // Function to create contract instance
+    const getContract = (
+      contractAddress: string,
+      abi: readonly ethers.utils.Fragment[]
+    ) => {
+      return new ethers.Contract(contractAddress, abi, signer);
+    };
+
+    // Function to send transaction with proper error handling
+    const sendTransaction = async (
+      contract: ethers.Contract,
+      functionName: string,
+      args: unknown[],
+      options = {}
+    ) => {
+      try {
+        const tx = await contract[functionName](...args, options);
+        const receipt = await tx.wait();
+
+        return {
+          success: true,
+      transactionHash: receipt.transactionHash,
+          receipt: receipt,
+    };
+  } catch (error) {
+        console.error(`Transaction error in ${functionName}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+          details: error instanceof Error ? error.cause : undefined,
+    };
+  }
+};
+
+    return {
+      provider,
+      signer,
+      address,
+  chainId,
+      getContract,
+      sendTransaction,
+      isConnected: true,
+    };
+  } catch (error) {
+    console.error("Failed to initialize client:", error);
+    return {
+      provider: null,
+      signer: null,
+      address: null,
+      chainId: null,
+      getContract: () => {
+        throw new Error("Client not initialized");
+      },
+      sendTransaction: () => {
+        throw new Error("Client not initialized");
+      },
+      isConnected: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+};
+
+// Update integration object to include the new client initialization function
 export const integration = {
-  formatUnits,
-  parseUnits,
-  approveWithWagmi,
-  setTokenPrice,
-  getTokenBalance,
-  checkAllowance,
-  fundFaucet,
   deposit,
   withdraw,
   borrow,
   repay,
   listToken,
   createPool,
-  getPoolInformation,
   stake,
-  unstake,
-  getUserPoolInfo,
-  claimRewards,
-  emergencyWithdraw,
-  // Add GOAT SDK functions
+  formatUnits,
+  parseUnits,
   getPricePrediction,
   getTokenInsights,
   getTokenInfo,
   bridgeTokens,
   resolveEnsName,
   addBalancerLiquidity,
+  getPoolInformation: sdkGetPoolInformation,
+  initializeClient,
 };
