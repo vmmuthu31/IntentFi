@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { toast } from "sonner";
 import * as React from "react";
@@ -12,6 +12,19 @@ import IntentAgent from "@/components/intent/IntentAgent";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import WalletConnect from "@/components/ui/WalletConnect";
+import { ethers } from "ethers";
+
+// Define Ethereum provider interface
+interface EthereumProvider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on: (eventName: string, listener: (...args: unknown[]) => void) => void;
+  removeListener: (
+    eventName: string,
+    listener: (...args: unknown[]) => void
+  ) => void;
+  isMetaMask?: boolean;
+  // Add other properties as needed
+}
 
 // Add a custom type that extends IntentExecutionPlan
 type IntentResultWithMetadata = IntentExecutionPlan & {
@@ -32,6 +45,519 @@ export default function IntentPage() {
   >([]);
 
   const { address, isConnected } = useAccount();
+
+  // Function to execute a transfer directly in the browser with MetaMask
+  const executeTransferDirectly = useCallback(
+    async (to: string, amount: string, token: string, chainId: number) => {
+      try {
+        // Set status to processing
+        if (intentResult) {
+          setExecutionStatus(
+            intentResult.steps.map((_, index) => ({
+              step: index,
+              status: index === 0 ? "processing" : "pending",
+            }))
+          );
+        }
+
+        toast.info("Connecting to MetaMask...");
+
+        // Ensure ethereum is available in window
+        if (typeof window.ethereum === "undefined") {
+          throw new Error("MetaMask is not installed");
+        }
+
+        // Request account access
+        const ethereum = window.ethereum as EthereumProvider;
+        await ethereum.request({ method: "eth_requestAccounts" });
+
+        // Create a Web3Provider using the ethereum object
+        const provider = new ethers.providers.Web3Provider(ethereum);
+
+        // Check if the wallet is connected to the correct network
+        const network = await provider.getNetwork();
+        if (network.chainId !== chainId) {
+          toast.error(
+            `Please switch to the correct network (Chain ID: ${chainId})`
+          );
+
+          // Try to switch the network for the user
+          try {
+            await ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: `0x${chainId.toString(16)}` }],
+            });
+            toast.success("Network switched successfully");
+          } catch (error) {
+            console.error("Network switch error:", error);
+            toast.error(
+              "Failed to switch network. Please switch manually in your wallet."
+            );
+            throw new Error(
+              "Network mismatch, please switch to the correct network"
+            );
+          }
+        }
+
+        const signer = provider.getSigner();
+
+        // Get the actual to address (handle both regular addresses and ENS names)
+        let recipientAddress = to;
+
+        // Handle specific case where to address is N/A
+        if (to === "N/A") {
+          toast.error(
+            "Invalid recipient address 'N/A'. Please provide a valid address."
+          );
+          throw new Error("Invalid recipient address 'N/A'");
+        }
+
+        // Basic validation of the address format
+        if (to.startsWith("0x")) {
+          // Validate the address is a proper format
+          if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
+            toast.error(
+              "Invalid Ethereum address format. Addresses must be 42 characters including 0x prefix."
+            );
+            throw new Error("Invalid Ethereum address format");
+          }
+
+          try {
+            // Additional validation with ethers
+            recipientAddress = ethers.utils.getAddress(to); // This will check the checksum and throw if invalid
+
+            // Check if it's a contract or EOA (optional, can be removed if causing issues)
+            // const code = await provider.getCode(recipientAddress);
+            // if (code !== '0x') {
+            //   toast.warning("The address appears to be a contract. Make sure it can handle token transfers.");
+            // }
+          } catch (error) {
+            console.error("Address validation error:", error);
+            toast.error(
+              "Invalid checksum address. Please double-check the address."
+            );
+            throw new Error("Invalid Ethereum address checksum");
+          }
+        }
+        // Check if the recipient looks like an ENS name
+        else if (to.includes(".eth") || to.includes(".")) {
+          try {
+            // Try to resolve the ENS name
+            toast.info("Resolving address...");
+            const resolved = await provider.resolveName(to);
+            if (!resolved) {
+              toast.error(
+                `Could not resolve ${to} to an address. ENS may not be supported on this network.`
+              );
+              throw new Error(`Could not resolve ${to} to an address`);
+            }
+
+            recipientAddress = resolved;
+            toast.success(`Resolved to ${recipientAddress}`);
+          } catch (ensError) {
+            console.error("ENS resolution error:", ensError);
+            toast.error(
+              `Failed to resolve ${to} to an address. ENS may not be supported on this network.`
+            );
+            throw new Error(`ENS resolution failed for ${to}`);
+          }
+        } else {
+          toast.error(
+            "Invalid address format. Must be an Ethereum address (0x...) or ENS name."
+          );
+          throw new Error("Invalid address format");
+        }
+
+        let localTxHash = "";
+
+        // Execute the appropriate transaction based on token type
+        if (token.toUpperCase() === "CELO") {
+          // Native token transfer
+          toast.info("Preparing transaction, please check your wallet...");
+
+          try {
+            console.log(`Sending ${amount} CELO to ${recipientAddress}`);
+
+            // Get balance first to check if user has enough funds
+            const balance = await provider.getBalance(
+              await signer.getAddress()
+            );
+            const amountInWei = ethers.utils.parseEther(amount);
+
+            console.log(
+              `User balance: ${ethers.utils.formatEther(balance)} CELO`
+            );
+            console.log(
+              `Amount to send: ${ethers.utils.formatEther(amountInWei)} CELO`
+            );
+
+            // Check if user has enough balance including estimated gas
+            if (balance.lt(amountInWei.add(ethers.utils.parseEther("0.005")))) {
+              toast.error(
+                `Insufficient balance. You need at least ${amount} CELO plus gas.`
+              );
+              throw new Error("Insufficient balance for transfer");
+            }
+
+            // Get gas price
+            const gasPrice = await provider.getGasPrice();
+            console.log(
+              `Current gas price: ${ethers.utils.formatUnits(gasPrice, "gwei")} gwei`
+            );
+
+            // Use our retry function
+            const receipt = await sendTransactionWithRetry(
+              // Transaction function
+              () =>
+                signer.sendTransaction({
+                  to: recipientAddress,
+                  value: amountInWei,
+                  gasLimit: 100000, // Explicitly set gas limit
+                  gasPrice: gasPrice, // Use current gas price
+                }),
+              // Set hash function
+              (hash) => {
+                localTxHash = hash;
+              }
+            );
+
+            // Use localTxHash if needed
+            console.log("Transaction hash for UI:", localTxHash);
+
+            // Update execution status
+            if (intentResult) {
+              setExecutionStatus(
+                intentResult.steps.map((_, index) => ({
+                  step: index,
+                  status: "complete",
+                  txHash: index === 0 ? receipt.transactionHash : undefined,
+                }))
+              );
+            }
+
+            toast.success("Transfer completed successfully!");
+            return {
+              success: true,
+              transactionHash: localTxHash, // Use transactionHash consistently
+            };
+          } catch (error: unknown) {
+            console.error("CELO transfer error:", error);
+
+            // Check for user rejection - need to type-check error properties
+            if (
+              error &&
+              typeof error === "object" &&
+              (("code" in error && error.code === 4001) ||
+                ("message" in error &&
+                  typeof error.message === "string" &&
+                  error.message.includes("user rejected")))
+            ) {
+              toast.error("Transaction was rejected by user");
+            }
+            // Check for other errors
+            else {
+              const errorMessage =
+                error && typeof error === "object" && "message" in error
+                  ? error.message
+                  : "Transaction failed, please try again";
+              toast.error(
+                typeof errorMessage === "string"
+                  ? errorMessage
+                  : "Unknown error occurred"
+              );
+            }
+
+            if (intentResult) {
+              setExecutionStatus(
+                intentResult.steps.map((_, index) => ({
+                  step: index,
+                  status: "failed",
+                }))
+              );
+            }
+
+            throw error;
+          }
+        } else {
+          // ERC20 token transfer
+          // Define token addresses for different chains
+          const tokenAddresses: Record<number, string> = {
+            44787: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B", // USDC on Celo Alfajores
+            31: "0xa683146bb93544068737dfca59f098e7844cdfa8", // USDC on Rootstock testnet
+          };
+
+          toast.info("Preparing token transfer, please check your wallet...");
+
+          try {
+            const tokenAddress = tokenAddresses[chainId];
+            if (!tokenAddress) {
+              throw new Error(`${token} not supported on chain ${chainId}`);
+            }
+
+            console.log(`Sending ${amount} ${token} to ${recipientAddress}`);
+            console.log(`Token contract: ${tokenAddress}`);
+
+            // ERC20 transfer ABI fragment
+            const erc20Abi = [
+              {
+                constant: false,
+                inputs: [
+                  { name: "_to", type: "address" },
+                  { name: "_value", type: "uint256" },
+                ],
+                name: "transfer",
+                outputs: [{ name: "", type: "bool" }],
+                payable: false,
+                stateMutability: "nonpayable",
+                type: "function",
+              },
+              {
+                constant: true,
+                inputs: [],
+                name: "decimals",
+                outputs: [{ name: "", type: "uint8" }],
+                payable: false,
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                constant: true,
+                inputs: [{ name: "_owner", type: "address" }],
+                name: "balanceOf",
+                outputs: [{ name: "", type: "uint256" }],
+                payable: false,
+                stateMutability: "view",
+                type: "function",
+              },
+            ];
+
+            // Create contract instance
+            const tokenContract = new ethers.Contract(
+              tokenAddress,
+              erc20Abi,
+              signer
+            );
+
+            // Get token decimals (default to 6 for USDC if there's an issue)
+            let decimals;
+            try {
+              decimals = await tokenContract.decimals();
+              console.log(`Token decimals: ${decimals}`);
+            } catch (error) {
+              console.error("Error getting decimals:", error);
+              decimals = 6; // Default for USDC
+              console.log(`Using default decimals: ${decimals}`);
+            }
+
+            // Check token balance
+            const signerAddress = await signer.getAddress();
+            const tokenBalance = await tokenContract.balanceOf(signerAddress);
+            console.log(
+              `Token balance: ${ethers.utils.formatUnits(tokenBalance, decimals)} ${token}`
+            );
+
+            // Parse amount with correct decimals
+            const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+            console.log(
+              `Amount to send in base units: ${parsedAmount.toString()}`
+            );
+
+            // Check if balance is sufficient
+            if (tokenBalance.lt(parsedAmount)) {
+              toast.error(
+                `Insufficient ${token} balance. You have ${ethers.utils.formatUnits(tokenBalance, decimals)} but need ${amount}`
+              );
+              throw new Error(`Insufficient ${token} balance`);
+            }
+
+            // Get gas estimate and price
+            const gasPrice = await provider.getGasPrice();
+            console.log(
+              `Current gas price: ${ethers.utils.formatUnits(gasPrice, "gwei")} gwei`
+            );
+
+            // Check if the user has enough native token for gas
+            const nativeBalance = await provider.getBalance(signerAddress);
+            const estimatedGasCost = gasPrice.mul(150000); // Approximate gas limit for ERC20 transfers
+
+            if (nativeBalance.lt(estimatedGasCost)) {
+              toast.error(
+                `Insufficient balance for gas. You need some CELO for transaction fees.`
+              );
+              throw new Error("Insufficient balance for gas");
+            }
+
+            // Use our retry function for ERC20 transfer
+            const receipt = await sendTransactionWithRetry(
+              // Transaction function - tokenContract.transfer wrapped in a function
+              () =>
+                tokenContract.transfer(recipientAddress, parsedAmount, {
+                  gasLimit: 150000,
+                  gasPrice: gasPrice,
+                }),
+              // Set hash function
+              (hash) => {
+                localTxHash = hash;
+              }
+            );
+
+            // Use localTxHash if needed
+            console.log("Transaction hash for UI:", localTxHash);
+
+            // Update execution status
+            if (intentResult) {
+              setExecutionStatus(
+                intentResult.steps.map((_, index) => ({
+                  step: index,
+                  status: "complete",
+                  txHash: index === 0 ? receipt.transactionHash : undefined,
+                }))
+              );
+            }
+
+            toast.success("Transfer completed successfully!");
+            return {
+              success: true,
+              transactionHash: localTxHash, // Use transactionHash consistently
+            };
+          } catch (error: unknown) {
+            console.error("Token transfer error:", error);
+
+            // Check for user rejection - need to type-check error properties
+            if (
+              error &&
+              typeof error === "object" &&
+              (("code" in error && error.code === 4001) ||
+                ("message" in error &&
+                  typeof error.message === "string" &&
+                  error.message.includes("user rejected")))
+            ) {
+              toast.error("Transaction was rejected by user");
+            }
+            // Check for other errors
+            else {
+              const errorMessage =
+                error && typeof error === "object" && "message" in error
+                  ? error.message
+                  : "Transaction failed, please try again";
+              toast.error(
+                typeof errorMessage === "string"
+                  ? errorMessage
+                  : "Unknown error occurred"
+              );
+            }
+
+            if (intentResult) {
+              setExecutionStatus(
+                intentResult.steps.map((_, index) => ({
+                  step: index,
+                  status: "failed",
+                }))
+              );
+            }
+
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("Error executing transfer:", error);
+
+        // Update execution status to failed
+        if (intentResult) {
+          setExecutionStatus(
+            intentResult.steps.map((_, index) => ({
+              step: index,
+              status: "failed",
+            }))
+          );
+        }
+
+        toast.error(
+          error instanceof Error ? error.message : "Transaction failed"
+        );
+        return {
+          success: false,
+          error,
+        };
+      }
+    },
+    [intentResult, setExecutionStatus]
+  );
+
+  // Helper function for sending transactions with automatic retry
+  const sendTransactionWithRetry = async (
+    txFunc: () => Promise<ethers.providers.TransactionResponse>,
+    setTxHash: (hash: string) => void,
+    maxRetries = 2
+  ): Promise<{ transactionHash: string; gasUsed?: ethers.BigNumber }> => {
+    let lastError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          toast.info(
+            `Retrying transaction (attempt ${attempt}/${maxRetries})...`
+          );
+        }
+
+        // Send the transaction
+        const tx = await txFunc();
+
+        console.log(`Transaction sent: ${tx.hash}`);
+        setTxHash(tx.hash);
+        toast.info("Transaction sent! Waiting for confirmation...");
+
+        // Wait for transaction to be mined with a timeout
+        const receipt = (await Promise.race([
+          tx.wait(),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Transaction confirmation timeout")),
+              60000
+            )
+          ),
+        ])) as ethers.providers.TransactionReceipt;
+
+        console.log(`Transaction confirmed: ${receipt.transactionHash}`);
+        console.log(`Gas used: ${receipt.gasUsed.toString()}`);
+
+        return {
+          transactionHash: receipt.transactionHash,
+          gasUsed: receipt.gasUsed,
+        };
+      } catch (error: unknown) {
+        console.error(`Transaction attempt ${attempt + 1} failed:`, error);
+        lastError = error;
+
+        // Check if this is a nonce error that we can retry
+        const errorMsg =
+          error && typeof error === "object" && "message" in error
+            ? String(error.message).toLowerCase()
+            : "";
+
+        const isNonceError =
+          errorMsg.includes("nonce") ||
+          errorMsg.includes("already mined") ||
+          errorMsg.includes("replacement transaction underpriced");
+
+        // If it's not a nonce error or user rejection, we can retry
+        if (isNonceError && attempt < maxRetries) {
+          console.log(
+            "Detected nonce issue, will retry with fresh transaction"
+          );
+          // Wait a bit before retrying
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+
+        // For user rejection or other errors, or if we've exhausted retries, just throw
+        throw error;
+      }
+    }
+
+    // If we get here, we've exhausted retries
+    throw lastError;
+  };
 
   // This function is called by the IntentAgent component
   const handleCreateIntent = async (newIntent: string) => {
@@ -83,6 +609,118 @@ export default function IntentPage() {
             },
             duration: 10000,
           });
+          return;
+        }
+
+        // Check if wallet connection is required
+        if (data.data.requiresWalletConnect) {
+          if (!isConnected) {
+            toast.warning("Wallet connection required for this operation", {
+              action: {
+                label: "Connect Wallet",
+                onClick: () => {
+                  // This should trigger the wallet connection flow
+                  const connectButton = document.querySelector(
+                    '[aria-label="Connect wallet"]'
+                  );
+                  if (connectButton && connectButton instanceof HTMLElement) {
+                    connectButton.click();
+                  }
+                },
+              },
+              duration: 10000,
+            });
+          } else {
+            // Check if this is a transfer operation that we can handle directly
+            const step = data.data.steps[0];
+
+            if (step && step.details && step.details.action === "transfer") {
+              // This is a transfer that needs wallet interaction
+
+              // Get transfer parameters from the step
+              const { to, amount, symbol, chainId } = step.details.params;
+
+              // Handle case where recipient is N/A - ask user for recipient address
+              if (to === "N/A") {
+                toast.warning("Recipient address is required", {
+                  description:
+                    "The transfer operation requires a valid recipient address",
+                  action: {
+                    label: "Enter Address",
+                    onClick: () => {
+                      const recipientAddress = prompt(
+                        "Enter recipient address (0x... or ENS name):"
+                      );
+                      if (recipientAddress && recipientAddress.trim()) {
+                        // Execute with provided address
+                        executeTransferDirectly(
+                          recipientAddress.trim(),
+                          amount,
+                          symbol,
+                          Number(chainId)
+                        );
+                      }
+                    },
+                  },
+                  duration: 15000,
+                });
+                return;
+              }
+
+              toast.info("Initiating transfer via MetaMask...");
+
+              // Execute the transfer directly in the browser
+              executeTransferDirectly(to, amount, symbol, Number(chainId))
+                .then((result) => {
+                  if (intentResult) {
+                    const updatedSteps = [...intentResult.steps];
+                    if (updatedSteps[0]) {
+                      updatedSteps[0].description = `Successfully transferred ${amount} ${symbol} to ${to}.`;
+
+                      if (
+                        result.success &&
+                        "transactionHash" in result &&
+                        typeof result.transactionHash === "string"
+                      ) {
+                        updatedSteps[0].transactionHash =
+                          result.transactionHash;
+                      }
+
+                      // Update the state
+                      setIntentResult({
+                        ...intentResult,
+                        steps: updatedSteps,
+                        requiresWalletConnect: false,
+                      });
+
+                      setExecutionStatus(
+                        intentResult.steps.map((_, index) => ({
+                          step: index,
+                          status: "complete" as const,
+                          txHash:
+                            index === 0
+                              ? updatedSteps[0].transactionHash
+                              : undefined,
+                        }))
+                      );
+                    }
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error during executeTransferDirectly:", error);
+                });
+            } else {
+              // For other operations that require wallet
+              toast.warning(
+                "This operation requires interaction with your wallet",
+                {
+                  description:
+                    "Please approve the transaction when your wallet prompts you",
+                  duration: 10000,
+                }
+              );
+            }
+          }
           return;
         }
 

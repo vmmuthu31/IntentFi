@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/layouts/site-header";
 import { siteConfig } from "@/lib/utils/site-config";
 import { Toaster } from "sonner";
@@ -67,21 +66,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen
         custom-gradient mx-10`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <WalletProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <div className="h-10"></div>
-              <SiteHeader />
-              <main className="flex-1">{children}</main>
-            </div>
-            <Toaster position="top-right" richColors closeButton />
-          </WalletProvider>
-        </ThemeProvider>
+        <WalletProvider>
+          <div className="relative flex min-h-screen flex-col">
+            <div className="h-10"></div>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+          </div>
+          <Toaster position="top-right" richColors closeButton />
+        </WalletProvider>
       </body>
     </html>
   );

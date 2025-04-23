@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useAccount, useChainId } from "wagmi";
 import { toast } from "sonner";
-import { integration } from "@/lib/services/integration";
 import { financialKeywords } from "@/lib/services/financialKeywords";
 import {
   fetchUserTokenBalances,
@@ -15,7 +14,6 @@ import {
 import { CHAIN_SPECIFIC_INTENTS } from "./utils/intent-examples";
 import { formatPoolInformation } from "./utils/pool-utils";
 import { Message, processMessage } from "./utils/message-utils";
-import { handleSwapTokens } from "./utils/swap-utils";
 import { AgentHeader } from "./ui/AgentHeader";
 import { MessageItem } from "./ui/MessageItem";
 import { InputArea } from "./ui/InputArea";
@@ -1756,62 +1754,6 @@ export default function IntentAgent({ onCreateIntent }: IntentAgentProps) {
               timestamp: new Date(),
             },
           ]);
-
-          // Process the swap
-          if (isConnected && address && chainId) {
-            handleSwapTokens(
-              integration,
-              fromToken,
-              toToken,
-              amount,
-              chainId,
-              window.ethereum,
-              address,
-              isConnected
-            ).then((result) => {
-              if (result.success) {
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    role: "assistant",
-                    content: result.message,
-                    timestamp: new Date(),
-                    actions: [
-                      {
-                        label: "Check balances",
-                        action: "DIRECT_INTENT",
-                        intent: `Check my ${toToken} balance`,
-                      },
-                      {
-                        label: "Make another swap",
-                        action: "SHOW_OPTIONS",
-                      },
-                    ],
-                  },
-                ]);
-              } else {
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    role: "assistant",
-                    content: `Error: ${result.message}`,
-                    timestamp: new Date(),
-                    actions: [
-                      {
-                        label: "Try again",
-                        action: "DIRECT_INTENT",
-                        intent: `Swap ${amount} ${fromToken} to ${toToken}`,
-                      },
-                      {
-                        label: "Try different amounts",
-                        action: "SHOW_OPTIONS",
-                      },
-                    ],
-                  },
-                ]);
-              }
-            });
-          }
         }
       } else if (quoteMatch) {
         const amount = quoteMatch[1];

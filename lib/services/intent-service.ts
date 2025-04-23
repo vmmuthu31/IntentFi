@@ -6,23 +6,37 @@
  */
 
 import { apiConfig } from "@/app/api/config";
-import { integration } from "./integration";
+import {
+  getTokenBalance,
+  getAllowance,
+  getTotalSupply,
+  transferTokens,
+  approveTokens,
+  convertToBaseUnit,
+  convertFromBaseUnit,
+} from "./integration";
 import { ethers } from "ethers";
-import { Web3Provider } from "./goat-sdk-service";
 
 export interface IntentStep {
   description: string;
   chain: string;
   transactionHash?: string;
   requiresKyc?: boolean;
+  requiresWalletConnect?: boolean;
   redirectUrl?: string;
   userAddress?: string;
   chainId?: string;
+  status?: string;
+  details?: Record<string, string | number | boolean | object>;
 }
 
 export interface IntentExecutionPlan {
   steps: IntentStep[];
   requiresKyc?: boolean;
+  requiresWalletConnect?: boolean;
+  requiresUserInput?: boolean;
+  details?: Record<string, string | number | boolean | object>;
+  error?: string;
 }
 
 /**
@@ -78,7 +92,7 @@ async function processWithClaude(
 The JSON should have this format:
 {
   "steps": [
-    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "poolId": "Pool ID or 4" if no pool id is provided take 4 as the value},
+    {"chain": "Chain name or 'Multiple' or 'N/A'", "token": "Token name or 'N/A'", chainId: "Chain ID or 'N/A'", "amount": "Amount or 'N/A'", "function": "Function name or 'N/A' only take it in small letters", "to": "Recipient address for transfers"}
   ],
 }
 
@@ -91,52 +105,32 @@ const NETWORK_CONFIGS = {
     name: "Rootstock Testnet",
     network: "rootstock",
     rpcUrl: "https://public-node.testnet.rsk.co",
-    contractAddresses: {
-      PriceOracle: "0xc6C9FE196408c0Ade5F394d930cF90Ebab66511e",
-      LendingPool: "0x60b588582b8308b9b41966fBd38821F31AA06537",
-      YieldFarming: "0x2B65Eba61bac37Ae872bEFf9d1932129B0ed24ee",
-      DeFIPlatform: "0x653c13Fb7C1E5d855448af2A385F2D97a623384E",
-      Token: {
-        RBTC: "0x86E47CBf56d01C842AC036A56C8ea2fE0168a2D1",
-        USDT: "0x14b1c5415C1164fB09450c9e46a00D5C39e52644",
-      },
-    },
   },
   celoAlfajores: {
     chainId: 44787,
     chain: celoAlfajores,
     name: "celoAlfajores",
     network: "celo-alfajores",
-    rpcUrl: process.env.RPC_URL,
+    rpcUrl: process.env.CELO_RPC_URL,
     nativeCurrency: {
       decimals: 18,
       name: "CELO",
       symbol: "CELO",
-    },
-    contractAddresses: {
-      PriceOracle: "0x308b659C3B437cFB4F54573E9C3C03acEb8B5205",
-      LendingPool: "0x884184a9aFb1B8f44fAd1C74a63B739A7c82801D",
-      YieldFarming: "0xa2AE5cB0B0E23f710887BE2676F1381fb9e4fe44",
-      DeFIPlatform: "0x649f3f2F4aB598272f2796401968ed74CBeA948c",
-      Token: {
-        USDC: "0xB1edE574409Af70267E37F368Ffa4eC427F5eE73",
-        CELO: "0xb2CfbF986e91beBF31f31CCf41EDa83384c3e7d5",
-        USDT: "0x50ef9155718e4b69972ebd7feb7d6d554169e6d2",
-      },
-    },
+    }
   }
 };
 2. check if the chainId is valid and the user given and the NETWORK_CONFIGS should be same the user current chainId: "${chainId}"
 3. Chekck if the user has given you token name, Amount and chainId
-4. Identify the function of the intent by looking for specific keywords:
+4. For transfers: Extract the recipient address from the intent. Look for phrases like "to 0x...", "send to 0x...", etc.
+5. Identify the function of the intent by looking for specific keywords:
    - For balance checks: Use function "balanceof" if the intent contains words like "balance", "how much", "check my", "how many", "see my", "view my"
-   - For deposits: Use function "deposit" if the intent contains words like "deposit", "add", "put in", "transfer to", "send to", "invest"
-   - For withdrawals: Use function "withdraw" if the intent contains words like "withdraw", "take out", "remove", "get back", "pull out", "transfer from"
-   - For borrowing: Use function "borrow" if the intent contains words like "borrow", "take a loan", "get a loan", "lend me", "loan me"
-   - For repayments: Use function "repay" if the intent contains words like "repay", "pay back", "return", "settle", "clear debt"
-   - For getting pool information: Use function "getPoolInformation" if the intent contains words like "get pools", "pool information", "pool details", "pool data", or "get liquidity".
-   - For staking: Use function "stake" if the intent contains words like "stake", "invest", "lock up", "put into", "commit to", "yield"
-   - For unstaking: Use function "unstake" if the intent contains words like "unstake", "stake withdraw", "remove from stake", "take out of stake"
+   - For transfers: Use function "transfer" if the intent contains words like "transfer", "send", "move", "pay"
+   - For approvals: Use function "approve" if the intent contains words like "approve", "allow", "permit", "authorize"
+   - For allowance checks: Use function "allowance" if the intent contains words like "allowance", "approved amount", "spending limit"
+   - For total supply: Use function "totalsupply" if the intent contains words like "total supply", "circulating", "max supply"
+   - For converting values: Use function "converttobaseunit" if the intent contains words like "convert to wei", "to base units"
+   - For converting from base units: Use function "convertfrombaseunit" if the intent contains words like "convert from wei", "from base units", "to human readable"
+   
 Here's my intent: "${intent}"
 
 Return ONLY the JSON with no other text.`,
@@ -168,7 +162,6 @@ Return ONLY the JSON with no other text.`,
       let chainId = step.chainId; // This is a string from Claude's response
       const amount = step.amount;
       const functionName = step.function;
-      const poolId = step.poolId;
 
       // Add userAddress to the step for KYC verification
       step.userAddress = userAddress;
@@ -192,107 +185,57 @@ Return ONLY the JSON with no other text.`,
       console.log("Parsed chainId:", chainId);
       console.log("Parsed amount:", amount);
       console.log("Parsed functionName:", functionName);
-      console.log("Parsed poolId:", poolId);
+
       let result;
 
-      if (functionName == "deposit") {
-        const numericChainId = parseInt(chainId, 10);
-
+      if (functionName === "balanceof") {
         try {
-          const depositResult = await integration.deposit({
-            chainId: numericChainId,
-            token,
-            amount,
-          });
+          const address = step.userAddress || userAddress || "";
 
-          result = {
-            steps: [
-              {
-                description: `Deposited ${amount} ${token} on ${chain}.`,
-                transactionHash: depositResult.transactionHash,
-                status: depositResult.success ? "succeeded" : "failed",
-                chain,
+          if (!address) {
+            // If address is not provided, explicitly inform the user we need an address
+            result = {
+              steps: [
+                {
+                  description: `Please provide a wallet address to check the ${token} balance.`,
+                  chain,
+                  requiresWalletConnect: true,
+                },
+              ],
+              requiresWalletConnect: true,
+            };
+            return result;
+          }
+
+          const formattedBalance = await getTokenBalance(address, token);
+
+          // Handle the case where balance check is done in read-only mode
+          if (formattedBalance.includes("unavailable")) {
+            result = {
+              steps: [
+                {
+                  description: `To check your ${token} balance, please connect your wallet.`,
+                  chain,
+                  requiresWalletConnect: true,
+                },
+              ],
+              requiresWalletConnect: true,
+            };
+          } else {
+            result = {
+              steps: [
+                {
+                  description: `Checked balance of ${token} on ${chain} is ${formattedBalance}.`,
+                  chain,
+                },
+              ],
+              details: {
+                token,
+                balance: formattedBalance,
+                chainId: chainId,
               },
-            ],
-          };
-        } catch (error) {
-          console.error("Error during deposit operation:", error);
-          // Create a user-friendly error message
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Unknown error occurred during deposit";
-
-          result = {
-            steps: [
-              {
-                description: `Failed to deposit ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
-                status: "failed",
-                chain,
-              },
-            ],
-            error: errorMessage,
-          };
-        }
-      } else if (functionName == "withdraw") {
-        const numericChainId = parseInt(chainId, 10);
-
-        try {
-          const withdrawResult = await integration.withdraw({
-            chainId: numericChainId,
-            token,
-            amount,
-          });
-
-          result = {
-            steps: [
-              {
-                description: `Withdrew ${amount} ${token} from ${chain}.`,
-                transactionHash: withdrawResult.transactionHash,
-                status: withdrawResult.success ? "succeeded" : "failed",
-                chain,
-              },
-            ],
-          };
-        } catch (error) {
-          console.error("Error during withdraw operation:", error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Unknown error occurred during withdrawal";
-
-          result = {
-            steps: [
-              {
-                description: `Failed to withdraw ${amount} ${token} from ${chain}. Error: ${errorMessage}`,
-                status: "failed",
-                chain,
-              },
-            ],
-            error: errorMessage,
-          };
-        }
-      } else if (functionName == "balanceof") {
-        try {
-          const formattedBalance = await integration.getTokenBalance({
-            chainId: chainId,
-            token,
-            userAddress: step.userAddress,
-          });
-
-          result = {
-            steps: [
-              {
-                description: `Checked balance of ${token} on ${chain} is ${formattedBalance}.`,
-                chain,
-              },
-            ],
-            details: {
-              token,
-              balance: formattedBalance,
-              chainId: chainId,
-            },
-          };
+            };
+          }
         } catch (error) {
           console.error("Error during balance check:", error);
           const errorMessage =
@@ -303,7 +246,141 @@ Return ONLY the JSON with no other text.`,
           result = {
             steps: [
               {
-                description: `Failed to check balance of ${token} on ${chain}. Error: ${errorMessage}`,
+                description: `Failed to check balance of ${token} on ${chain}. ${
+                  error instanceof Error && error.message.includes("wallet")
+                    ? "Please connect your wallet."
+                    : `Error: ${errorMessage}`
+                }`,
+                status: "failed",
+                chain,
+                requiresWalletConnect:
+                  error instanceof Error && error.message.includes("wallet"),
+              },
+            ],
+            error: errorMessage,
+            requiresWalletConnect:
+              error instanceof Error && error.message.includes("wallet"),
+          };
+        }
+      } else if (functionName === "transfer") {
+        try {
+          // Check if the required parameters are provided
+          if (!amount || !token) {
+            throw new Error("Amount and token are required for transfer");
+          }
+
+          const to = step.to || ""; // Get the recipient address from the step
+
+          if (!to) {
+            // If no recipient address was parsed, we need to ask the user
+            return {
+              steps: [
+                {
+                  description: `Please provide a recipient address to transfer ${amount} ${token}.`,
+                  chain,
+                  status: "pending",
+                  details: {
+                    missingParam: "recipientAddress",
+                    amount,
+                    token,
+                  },
+                },
+              ],
+              requiresUserInput: true,
+            };
+          }
+
+          // Check if wallet is connected early - before attempting the transfer
+          // This provides a better UX by skipping the attempt when we know it will fail
+          // We should rely on the userAddress being passed in rather than checking for ethereum
+          // since this code runs server-side during API calls
+          if (!userAddress) {
+            return {
+              steps: [
+                {
+                  description: `To transfer ${amount} ${token} to ${to}, you need to connect your wallet.`,
+                  chain,
+                  status: "pending",
+                  requiresWalletConnect: true,
+                },
+              ],
+              requiresWalletConnect: true,
+            };
+          }
+
+          try {
+            const transferResult = await transferTokens(to, amount, token);
+
+            // Check if transferResult is indicating a wallet requirement
+            if (
+              "requiresWallet" in transferResult &&
+              transferResult.requiresWallet
+            ) {
+              return {
+                steps: [
+                  {
+                    description: `To transfer ${amount} ${token} to ${to}, you need to connect your wallet.`,
+                    chain,
+                    status: "pending",
+                    requiresWalletConnect: true,
+                    details: {
+                      action: transferResult.action,
+                      params: transferResult.params,
+                    },
+                  },
+                ],
+                requiresWalletConnect: true,
+              };
+            }
+
+            // At this point, transferResult must be a TransactionReceipt
+            const receipt =
+              transferResult as ethers.providers.TransactionReceipt;
+
+            result = {
+              steps: [
+                {
+                  description: `Transferred ${amount} ${token} to ${to} on ${chain}.`,
+                  transactionHash: receipt.transactionHash,
+                  chain,
+                },
+              ],
+            };
+          } catch (transferError) {
+            const errorMessage =
+              transferError instanceof Error
+                ? transferError.message
+                : "Unknown error during transfer";
+
+            // Check if wallet connection is required
+            if (errorMessage.includes("Wallet connection required")) {
+              return {
+                steps: [
+                  {
+                    description: `To transfer ${amount} ${token} to ${to}, please connect your wallet.`,
+                    chain,
+                    status: "pending",
+                    requiresWalletConnect: true,
+                  },
+                ],
+                requiresWalletConnect: true,
+              };
+            } else {
+              // For other errors
+              throw transferError;
+            }
+          }
+        } catch (error) {
+          console.error("Error during transfer:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during transfer";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to transfer ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
                 status: "failed",
                 chain,
               },
@@ -311,58 +388,91 @@ Return ONLY the JSON with no other text.`,
             error: errorMessage,
           };
         }
-      } else if (functionName === "borrow") {
-        const numericChainId = parseInt(chainId, 10);
-
-        // Check if user is KYC verified before allowing borrowing
-        const isKycVerified = await checkUserKycStatus(step.userAddress);
-
-        if (!isKycVerified) {
-          // Return a special response indicating KYC verification is required
-          return {
-            steps: [
-              {
-                description: `KYC verification required to borrow ${amount} ${token} on ${chain}.`,
-                chain,
-                requiresKyc: true,
-                redirectUrl: "/verify?redirect=/intent",
-              },
-            ],
-            requiresKyc: true,
-          };
-        }
-
+      } else if (functionName === "approve") {
         try {
-          const borrowResult = await integration.borrow({
-            chainId: numericChainId,
-            token,
-            amount,
-          });
+          // Check if the required parameters are provided
+          if (!amount || !token) {
+            throw new Error("Amount and token are required for approval");
+          }
+
+          const spender = step.spender || ""; // Get the spender address from the step
+
+          if (!spender) {
+            throw new Error("Spender address is required for approval");
+          }
+
+          const approveResult = await approveTokens(spender, amount, token);
 
           result = {
             steps: [
               {
-                description: `Borrowed ${amount} ${token} on ${chain}.`,
-                transactionHash: borrowResult.transactionHash,
-                status: borrowResult.success ? "succeeded" : "failed",
+                description: `Approved ${amount} ${token} for ${spender} on ${chain}.`,
+                transactionHash: approveResult.transactionHash,
+                chain,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error("Error during approval:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during approval";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to approve ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
+      } else if (functionName === "allowance") {
+        try {
+          // Check if the required parameters are provided
+          if (!token) {
+            throw new Error("Token is required for allowance check");
+          }
+
+          const owner = step.owner || userAddress || "";
+          const spender = step.spender || "";
+
+          if (!owner || !spender) {
+            throw new Error(
+              "Owner and spender addresses are required for allowance check"
+            );
+          }
+
+          const allowance = await getAllowance(owner, spender, token);
+
+          result = {
+            steps: [
+              {
+                description: `Allowance for ${spender} to spend ${token} from ${owner} is ${allowance}.`,
                 chain,
               },
             ],
             details: {
-              receipt: borrowResult.receipt,
+              token,
+              allowance,
+              owner,
+              spender,
             },
           };
         } catch (error) {
-          console.error("Error during borrowing operation:", error);
+          console.error("Error during allowance check:", error);
           const errorMessage =
             error instanceof Error
               ? error.message
-              : "Unknown error occurred during borrowing";
+              : "Unknown error occurred during allowance check";
 
           result = {
             steps: [
               {
-                description: `Failed to borrow ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
+                description: `Failed to check allowance for ${token} on ${chain}. Error: ${errorMessage}`,
                 status: "failed",
                 chain,
               },
@@ -370,117 +480,38 @@ Return ONLY the JSON with no other text.`,
             error: errorMessage,
           };
         }
-      } else if (functionName == "repay") {
-        const numericChainId = parseInt(chainId, 10);
-
+      } else if (functionName === "totalsupply") {
         try {
-          const repayResult = await integration.repay({
-            chainId: numericChainId,
-            token,
-            amount,
-          });
+          // Check if the required parameters are provided
+          if (!token) {
+            throw new Error("Token is required for total supply check");
+          }
+
+          const totalSupply = await getTotalSupply(token);
 
           result = {
             steps: [
               {
-                description: `Repaid ${amount} ${token} on ${chain}.`,
-                transactionHash: repayResult.transactionHash,
-                status: repayResult.success ? "succeeded" : "failed",
-                chain,
-              },
-            ],
-          };
-        } catch (error) {
-          console.error("Error during repay operation:", error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Unknown error occurred during repayment";
-
-          result = {
-            steps: [
-              {
-                description: `Failed to repay ${amount} ${token} on ${chain}. Error: ${errorMessage}`,
-                status: "failed",
-                chain,
-              },
-            ],
-            error: errorMessage,
-          };
-        }
-      } else if (functionName == "stake") {
-        const numericChainId = parseInt(chainId, 10);
-
-        try {
-          const stakeResult = await integration.stake({
-            chainId: numericChainId,
-            poolId,
-            amount,
-          });
-
-          result = {
-            steps: [
-              {
-                description: `Staked ${amount} into pool ${poolId} on ${chain}.`,
-                transactionHash: stakeResult.transactionHash,
-                status: stakeResult.success ? "succeeded" : "failed",
-                chain,
-              },
-            ],
-          };
-        } catch (error) {
-          console.error("Error during staking operation:", error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : "Unknown error occurred during staking";
-
-          result = {
-            steps: [
-              {
-                description: `Failed to stake ${amount} into pool ${poolId} on ${chain}. Error: ${errorMessage}`,
-                status: "failed",
-                chain,
-              },
-            ],
-            error: errorMessage,
-          };
-        }
-      } else if (functionName == "unstake") {
-        const numericChainId = parseInt(chainId, 10);
-
-        try {
-          const unstakeResult = await integration.stake({
-            chainId: numericChainId,
-            poolId,
-            amount,
-          });
-
-          result = {
-            steps: [
-              {
-                description: `Unstaked ${amount} from pool ${poolId} on ${chain}.`,
-                transactionHash: unstakeResult.transactionHash,
-                status: unstakeResult.success ? "succeeded" : "failed",
+                description: `Total supply of ${token} is ${totalSupply}.`,
                 chain,
               },
             ],
             details: {
-              token: unstakeResult,
-              receipt: unstakeResult.receipt,
+              token,
+              totalSupply,
             },
           };
         } catch (error) {
-          console.error("Error during unstaking operation:", error);
+          console.error("Error during total supply check:", error);
           const errorMessage =
             error instanceof Error
               ? error.message
-              : "Unknown error occurred during unstaking";
+              : "Unknown error occurred during total supply check";
 
           result = {
             steps: [
               {
-                description: `Failed to unstake ${amount} from pool ${poolId} on ${chain}. Error: ${errorMessage}`,
+                description: `Failed to check total supply of ${token} on ${chain}. Error: ${errorMessage}`,
                 status: "failed",
                 chain,
               },
@@ -488,37 +519,79 @@ Return ONLY the JSON with no other text.`,
             error: errorMessage,
           };
         }
-      } else if (functionName == "getpoolinformation") {
-        const numericChainId = parseInt(chainId, 10);
-
+      } else if (functionName === "converttobaseunit") {
         try {
-          const provider = ethers.getDefaultProvider(numericChainId);
-          const pools = await integration.getPoolInformation({
-            chainId: numericChainId,
-            provider: provider as Web3Provider,
-          });
+          // Check if the required parameters are provided
+          if (!amount || !token) {
+            throw new Error("Amount and token are required for conversion");
+          }
+
+          const baseUnitAmount = await convertToBaseUnit(amount, token);
 
           result = {
             steps: [
               {
-                description: `Retrieved information for ${pools.length} pools on ${chain}.`,
-                data: pools,
+                description: `Converted ${amount} ${token} to ${baseUnitAmount} base units.`,
                 chain,
               },
             ],
-            data: pools,
+            details: {
+              token,
+              amount,
+              baseUnitAmount,
+            },
           };
         } catch (error) {
-          console.error("Error retrieving pool information:", error);
+          console.error("Error during conversion to base units:", error);
           const errorMessage =
             error instanceof Error
               ? error.message
-              : "Unknown error occurred when retrieving pool information";
+              : "Unknown error occurred during conversion";
 
           result = {
             steps: [
               {
-                description: `Failed to retrieve pool information on ${chain}. Error: ${errorMessage}`,
+                description: `Failed to convert ${amount} ${token} to base units. Error: ${errorMessage}`,
+                status: "failed",
+                chain,
+              },
+            ],
+            error: errorMessage,
+          };
+        }
+      } else if (functionName === "convertfrombaseunit") {
+        try {
+          // Check if the required parameters are provided
+          if (!amount || !token) {
+            throw new Error("Amount and token are required for conversion");
+          }
+
+          const humanReadableAmount = await convertFromBaseUnit(amount, token);
+
+          result = {
+            steps: [
+              {
+                description: `Converted ${amount} base units to ${humanReadableAmount} ${token}.`,
+                chain,
+              },
+            ],
+            details: {
+              token,
+              amount,
+              humanReadableAmount,
+            },
+          };
+        } catch (error) {
+          console.error("Error during conversion from base units:", error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Unknown error occurred during conversion";
+
+          result = {
+            steps: [
+              {
+                description: `Failed to convert ${amount} base units to ${token}. Error: ${errorMessage}`,
                 status: "failed",
                 chain,
               },
@@ -601,12 +674,7 @@ Make your responses practical and realistic. For execution steps, consider:
     try {
       const parsedJson = JSON.parse(data.choices[0].message.content);
 
-      if (
-        !parsedJson.steps ||
-        !Array.isArray(parsedJson.steps) ||
-        !parsedJson.estimatedCost ||
-        !parsedJson.estimatedTime
-      ) {
+      if (!parsedJson.steps || !Array.isArray(parsedJson.steps)) {
         throw new Error("OpenAI response is missing required fields");
       }
 
@@ -629,123 +697,41 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
   const lowerIntent = intent.toLowerCase();
 
   if (
-    lowerIntent.includes("yield") ||
-    lowerIntent.includes("earn") ||
-    lowerIntent.includes("apy")
+    lowerIntent.includes("balance") ||
+    lowerIntent.includes("check") ||
+    lowerIntent.includes("how much")
   ) {
     return {
       steps: [
         {
-          description: "Check current USDC balances across chains",
+          description: "Check token balance",
           chain: "Multiple",
         },
-        {
-          description: "Query yield rates across DeFi protocols",
-          chain: "Multiple",
-        },
-        {
-          description: "Bridge 3,000 USDC from Ethereum to Polygon",
-          chain: "Ethereum → Polygon",
-        },
-        {
-          description: "Deposit 3,000 USDC into Aave on Polygon",
-          chain: "Polygon",
-        },
-        { description: "Set up monitoring for better rates", chain: "N/A" },
       ],
     };
   } else if (
-    lowerIntent.includes("diversif") ||
-    lowerIntent.includes("portfolio") ||
-    lowerIntent.includes("convert") ||
-    lowerIntent.includes("bitcoin") ||
-    lowerIntent.includes("btc")
-  ) {
-    return {
-      steps: [
-        { description: "Check current Bitcoin balance", chain: "Bitcoin" },
-        { description: "Calculate 50% of current BTC holdings", chain: "N/A" },
-        {
-          description: "Bridge BTC to Ethereum via Portal Bridge",
-          chain: "Bitcoin → Ethereum",
-        },
-        { description: "Exchange 20% for ETH on Ethereum", chain: "Ethereum" },
-        {
-          description: "Bridge 15% to Polygon and swap for MATIC",
-          chain: "Ethereum → Polygon",
-        },
-        {
-          description: "Bridge 10% to Avalanche and swap for AVAX",
-          chain: "Ethereum → Avalanche",
-        },
-        {
-          description: "Bridge 5% to Celo and swap for CELO",
-          chain: "Ethereum → Celo",
-        },
-      ],
-    };
-  } else if (
-    lowerIntent.includes("every") ||
-    lowerIntent.includes("weekly") ||
-    lowerIntent.includes("when") ||
-    lowerIntent.includes("condition") ||
-    lowerIntent.includes("rsi")
-  ) {
-    return {
-      steps: [
-        {
-          description: "Setup conditional intent smart contract",
-          chain: "Ethereum",
-        },
-        {
-          description: "Configure RSI data feed from Chainlink",
-          chain: "Ethereum",
-        },
-        {
-          description: "Set weekly trigger (Fridays) with RSI < 40 condition",
-          chain: "N/A",
-        },
-        {
-          description: "Authorize weekly USDC allowance of $200",
-          chain: "Ethereum",
-        },
-        {
-          description: "Set notification preferences for execution",
-          chain: "N/A",
-        },
-      ],
-    };
-  } else if (
-    lowerIntent.includes("gas") ||
-    lowerIntent.includes("move") ||
     lowerIntent.includes("transfer") ||
-    lowerIntent.includes("bridge")
+    lowerIntent.includes("send") ||
+    lowerIntent.includes("pay")
   ) {
     return {
       steps: [
         {
-          description: "Analyze current asset positions on Ethereum",
+          description: "Transfer tokens to recipient",
           chain: "Ethereum",
         },
+      ],
+    };
+  } else if (
+    lowerIntent.includes("approve") ||
+    lowerIntent.includes("allow") ||
+    lowerIntent.includes("permission")
+  ) {
+    return {
+      steps: [
         {
-          description: "Estimate gas savings by moving to Polygon",
-          chain: "N/A",
-        },
-        {
-          description: "Batch assets for efficient bridging",
+          description: "Approve tokens for spender",
           chain: "Ethereum",
-        },
-        {
-          description: "Bridge ETH for Polygon gas via Hyperlane",
-          chain: "Ethereum → Polygon",
-        },
-        {
-          description: "Bridge remaining assets via Circle CCTP",
-          chain: "Ethereum → Polygon",
-        },
-        {
-          description: "Setup gas-free transactions via Paymaster",
-          chain: "Polygon",
         },
       ],
     };
@@ -753,137 +739,8 @@ function simulateIntentProcessing(intent: string): IntentExecutionPlan {
     return {
       steps: [
         { description: "Analyze intent requirements", chain: "N/A" },
-        {
-          description: "Optimize cross-chain execution path",
-          chain: "Multiple",
-        },
-        { description: "Prepare transaction sequence", chain: "Multiple" },
-        { description: "Execute primary transactions", chain: "Multiple" },
-        { description: "Monitor and confirm completion", chain: "N/A" },
+        { description: "Execute primary transaction", chain: "Multiple" },
       ],
     };
-  }
-}
-
-/**
- * Check if a user has completed KYC verification
- * @param userAddress The user's wallet address
- * @returns Promise resolving to boolean indicating if user is verified
- */
-async function checkUserKycStatus(userAddress?: string): Promise<boolean> {
-  // Use the connected wallet address from the account property if not provided
-  try {
-    // Check if we're in a server environment (Next.js API route)
-    // This is needed because fetch behaves differently in server vs client
-    const isServer = typeof window === "undefined";
-
-    if (!userAddress) {
-      console.warn(
-        "No userAddress provided for KYC check, defaulting to true for demo purposes"
-      );
-      return true; // Allow borrow for demo purposes when no address is provided
-    }
-
-    // Normalize the address
-    const normalizedAddress = userAddress.toLowerCase();
-
-    // Always approve these test addresses
-    if (
-      normalizedAddress === "0x1234567890123456789012345678901234567890" ||
-      normalizedAddress === "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    ) {
-      console.log(
-        `Test address detected: ${normalizedAddress}, automatically approving KYC`
-      );
-      return true;
-    }
-
-    // Use full URL with proper origin for server-side calls
-    // For client-side, we can use relative URLs
-    const apiUrl = isServer
-      ? `${
-          process.env.NEXT_PUBLIC_API_URL || "https://intentfi.vercel.app"
-        }/api/user/verification?address=${normalizedAddress}`
-      : `/api/user/verification?address=${normalizedAddress}`;
-
-    console.log(
-      `Checking KYC status for address ${normalizedAddress} using endpoint: ${apiUrl}`
-    );
-
-    // Add debug timestamp to avoid caching issues
-    const timestamp = Date.now();
-    const response = await fetch(`${apiUrl}&_t=${timestamp}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache, no-store",
-      },
-    });
-
-    if (!response.ok) {
-      console.warn(`Verification check failed: ${response.status}`);
-      // In development mode, allow borrowing even if verification check fails
-      if (process.env.NODE_ENV === "development") {
-        console.log("Development mode: bypassing verification requirement");
-        return true;
-      }
-      return false;
-    }
-
-    const data = await response.json();
-    console.log(`KYC verification response for ${normalizedAddress}:`, data);
-
-    if (data.isVerified) {
-      console.log(`User ${normalizedAddress} is KYC verified`);
-      return true;
-    } else {
-      console.log(`User ${normalizedAddress} is NOT KYC verified`);
-
-      // For development mode, auto-approve after user has attempted verification once
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "Development mode: auto-approving user after verification attempt"
-        );
-
-        try {
-          // Auto-approve the user in development mode
-          await fetch(`/api/user/verification`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "no-cache, no-store",
-            },
-            body: JSON.stringify({
-              address: normalizedAddress,
-              isVerified: true,
-              verificationData: {
-                timestamp: new Date().toISOString(),
-                source: "auto_approved_dev",
-              },
-            }),
-          });
-
-          console.log(
-            `Development mode: User ${normalizedAddress} auto-approved`
-          );
-          return true;
-        } catch (autoApproveError) {
-          console.error("Error auto-approving user:", autoApproveError);
-          return true; // Still allow borrowing in development
-        }
-      }
-
-      return false;
-    }
-  } catch (error) {
-    console.error("Error checking KYC status:", error);
-    // For development purposes only - always approve if check fails
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "Development mode - bypassing verification check due to error"
-      );
-      return true;
-    }
-    return false;
   }
 }

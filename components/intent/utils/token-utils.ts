@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import axios from "axios";
-import { Provider as GoatProvider } from "@/lib/services/integration.d";
+import { Provider as GoatProvider } from "@/lib/services/integration";
 
 // Types
 export interface Token {
